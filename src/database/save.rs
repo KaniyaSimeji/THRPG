@@ -1,38 +1,59 @@
-use sea_orm::{
-    sea_query::{tests_cfg::Char, ColumnDef, PostgresQueryBuilder, Table},
-    ConnectionTrait, Schema,
-};
-use serenity::model::id::UserId;
+use sea_orm::{entity::prelude::*, DeriveEntityModel};
 
-pub struct SaveData {
-    user_id: UserId,
-    player: String,
-    level: u32,
-    exp: u32,
+//
+// Make SeaORM entity
+//
+#[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "userdata")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub user_id: u64,
+    pub player: String,
+    pub level: u32,
+    pub exp: u32,
 }
 
-impl SaveData {
-    pub fn new(user_id: UserId, player: String, level: u32, exp: u32) -> Self {
-        SaveData {
-            user_id,
-            player,
-            level,
-            exp,
+#[derive(Clone, Copy, Debug, EnumIter)]
+pub enum Relation {
+    Fruit,
+}
+
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        match self {
+            &Self::Fruit => Entity::has_many(Entity).into(),
         }
     }
+}
 
-    pub fn save_db(content: SaveData, connect_db: sea_orm::DatabaseConnection) {
-        Table::create()
-            .table(Char::Table)
-            .if_not_exists()
-            .col(
-                ColumnDef::new(Char::Id)
-                    .integer()
-                    .not_null()
-                    .auto_increment()
-                    .primary_key(),
-            )
-            .to_owned()
-            .to_string(PostgresQueryBuilder);
+impl Related<Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+//
+// Save program
+//
+
+pub async fn save(db: &DbConn, savedata: Model) {
+    if let Some(userdata) = Entity::find_by_id(savedata.user_id).one(db).await.unwrap() {
+        let mut userdata_mut: ActiveModel = userdata.into();
+        userdata_mut.player = sea_orm::entity::Set(savedata.player);
+        userdata_mut.level = sea_orm::entity::Set(savedata.level);
+        userdata_mut.exp = sea_orm::entity::Set(savedata.exp);
+
+        userdata_mut.update(db).await.unwrap();
+    } else {
+        let new_data = ActiveModel {
+            user_id: sea_orm::ActiveValue::Set(savedata.user_id),
+            player: sea_orm::ActiveValue::Set(savedata.player),
+            level: sea_orm::ActiveValue::Set(savedata.level),
+            exp: sea_orm::ActiveValue::Set(savedata.exp),
+        };
+
+        new_data.save(db).await.unwrap();
     }
 }

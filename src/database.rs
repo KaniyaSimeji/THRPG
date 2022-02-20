@@ -2,14 +2,16 @@ pub mod save;
 pub mod score;
 
 pub mod redis_connect {
+    use redis::aio::AsyncStream;
+
+    pub type AsyncConnection =
+        redis::aio::Connection<std::pin::Pin<Box<dyn AsyncStream + Sync + Send>>>;
     // url format :
     // "redis://<username>:<password>@<hostname>:<port>/<db>"
-    pub fn connect(url: impl Into<String>) -> redis::RedisResult<redis::Connection> {
-        let client = redis::Client::open(url.into())?;
-
-        let con = client.get_connection()?;
-
-        Ok(con)
+    pub async fn connect(url: impl Into<String>) -> redis::RedisResult<AsyncConnection> {
+        let client = redis::Client::open(url.into()).expect("不正なURLです");
+        let connect = client.get_tokio_connection().await?;
+        Ok(connect)
     }
 }
 

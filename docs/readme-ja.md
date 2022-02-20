@@ -14,3 +14,15 @@
   - serenity
   - SeaORM
 - PostgreSQL
+
+## ファイル階層
+```
+THRPG
+|- THRPG
+|- THRPG.toml
+|- docs
+|- chara
+|- i18n
+   |- Japanese
+   |- English
+```
