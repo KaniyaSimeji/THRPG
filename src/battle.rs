@@ -1,10 +1,11 @@
 pub mod charabase {
     use anyhow::Context;
+    use rand::prelude::IteratorRandom;
     use serde::Deserialize;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tokio::fs;
 
-    pub(crate) async fn new_enemy<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaBase> {
+    pub(crate) async fn read_enemy<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaBase> {
         let chara_data = {
             let file_content = fs::read_to_string(toml_path)
                 .await
@@ -15,6 +16,36 @@ pub mod charabase {
         .context("読み込めませんでした")?;
 
         Ok(chara_data)
+    }
+
+    // For example:
+    // toml_dir_path : i18n
+    pub async fn random_enemy<T: AsRef<Path>>(toml_dir_path: T) -> anyhow::Result<CharaBase> {
+        if toml_dir_path.as_ref().is_dir() {
+            let mut vec: Vec<PathBuf> = Vec::new();
+            for entry in tokio::fs::read_dir(toml_dir_path)
+                .await
+                .context("ディレクトリが読み込めません")
+            {
+                let mut entry_mut = entry;
+                vec.push(
+                    entry_mut
+                        .next_entry()
+                        .await
+                        .context("IO error")?
+                        .context("Not found")?
+                        .path(),
+                );
+            }
+            let mut rng = rand::thread_rng();
+            let random_path = vec.iter().choose(&mut rng).unwrap();
+            let enemy = read_enemy(random_path)
+                .await
+                .context("ファイルがありません");
+            enemy
+        } else {
+            Err(anyhow::anyhow!("ディレクトリではありません"))
+        }
     }
 
     #[derive(Debug, Clone, Deserialize)]

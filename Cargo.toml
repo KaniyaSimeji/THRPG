@@ -9,7 +9,7 @@ edition = "2021"
 tokio = { version = "1.15.0", features = ["macros","rt-multi-thread"] }
 toml = "0.5.8"
 serde = { version = "1.0.135", features = ["derive"] }
-rand = "0.8.4"
+rand = { version="0.8.4", features=["std_rng","std"]}
 anyhow = "1.0.53"
 thiserror = "1.0.30"
 once_cell = "1.9.0"

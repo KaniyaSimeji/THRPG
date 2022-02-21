@@ -7,10 +7,10 @@ invalid_postgres_url="不正なPostgreSQLのアドレスです"
 can_not_connect_redis="Redisに接続できません"
 can_not_connect_postgres="PostgreSQLに接続できません"
 can_not_connect_database_embed="データベースに接続できません"
-can_not_read_file="{file_name}が読み込めません"
+can_not_read_file="が読み込めません"
 can_not_read_file_embed="ファイルが読み込めません"
-toml_parse_error="{file_name}は不正なTOMLファイルです"
-invalid_chara="{chara_name}は不正なキャラクターです"
+toml_parse_error="は不正なTOMLファイルです"
+invalid_chara="は不正なキャラクターです"
 postgresql_execution_error="クエリの実行中にエラーが発生しました"
 postgresql_record_not_found="レコードが見つかりません"
 make_embed_error="埋め込みが作成できません"
@@ -22,10 +22,10 @@ THRPGは東方のRPGが遊べるBOTです。
 """
 author=["かにやしめじ","ろうなぐ"]
 [game_message]
-appear_enemy="{chara_name}が現れた"
+appear_enemy="が現れた"
 reaction_operation="下のリアクションから操作してね"
-battle_result="{damage}ダメージを受けた"
-took_damage="{damage}ダメージ与えた"
+battle_result="ダメージを受けた"
+took_damage="ダメージ与えた"
 
 [enemy_description]
 sakuya_name="十六夜咲夜"

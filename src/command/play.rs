@@ -1,5 +1,8 @@
 use crate::database::{postgres_connect, save::save};
-use crate::setting::setup::config_parse_toml;
+use crate::setting::{
+    i18n::i18n_text,
+    setup::{config_parse_toml, Languages},
+};
 use std::time::Duration;
 
 use anyhow::Context;
@@ -39,14 +42,25 @@ pub async fn ping(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
 #[command]
 #[description = "ゲームをプレイする"]
 pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
+    let chara_name = crate::battle::charabase::read_enemy("chara/reimu.toml")
+        .await
+        .unwrap()
+        .name;
+    let appear_enemy = i18n_text(Languages::Japanese)
+        .await
+        .game_message
+        .appear_enemy;
+
     if msg.author.bot != true {
         // 敵の出現
         let _ = msg
             .channel_id
             .send_message(&ctx.http, |f| {
                 f.embed(|e| {
-                    e.title(format!("{}が現れた！", "ank"))
-                        .description("ank".to_string())
+                    {
+                        e.title(format!("{chara_name}{appear_enemy}"))
+                            .description("ank".to_string())
+                    }
                 })
             })
             .await?;

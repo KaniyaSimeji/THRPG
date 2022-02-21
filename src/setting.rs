@@ -42,7 +42,7 @@ pub mod setup {
     }
 
     // format is {uuid}.null.address
-    pub fn random() -> String {
+    pub fn address_random() -> String {
         let url_string = format!("{}.{}", uuid::Uuid::new_v4(), *NULL_ADDRESS);
         url::Url::parse(&url_string).unwrap().into()
     }
