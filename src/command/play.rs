@@ -1,3 +1,4 @@
+use crate::battle::charabase::random_enemy;
 use crate::database::{postgres_connect, save::save};
 use crate::setting::{
     i18n::i18n_text,
@@ -11,7 +12,7 @@ use serenity::framework::standard::CommandResult;
 use serenity::model::channel::Message;
 use serenity::model::channel::ReactionType;
 
-// バトルコマンドの時に使うコマンドの配列の取得
+/// バトルコマンドの時に使うコマンドの配列の取得
 pub fn battle_reactions() -> [ReactionType; 4] {
     [
         ReactionType::Unicode(BATTLE_PLAY.to_string()),
@@ -29,7 +30,6 @@ const BATTLE_GUARD: &str = "\u{1F6E1}";
 #[commands(ping, play)]
 pub struct General;
 
-// ping
 #[command]
 pub async fn ping(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
     if msg.author.bot != true {
@@ -38,14 +38,11 @@ pub async fn ping(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
     Ok(())
 }
 
-// play
+/// play
 #[command]
 #[description = "ゲームをプレイする"]
 pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
-    let chara_name = crate::battle::charabase::read_enemy("chara/reimu.toml")
-        .await
-        .unwrap()
-        .name;
+    let chara_name = random_enemy("chara").await.unwrap().name;
     let appear_enemy = i18n_text(Languages::Japanese)
         .await
         .game_message
@@ -88,11 +85,13 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                     BATTLE_SAVE => match config_parse_toml().await.postgresql_config() {
                         Some(url) => {
                             let url_string = url.db_address.unwrap();
-                            let dbconn = postgres_connect::connect(url_string).await?;
+                            let dbconn = postgres_connect::connect(url_string)
+                                .await
+                                .expect("Invelid URL");
                             save(
                                 &dbconn,
                                 crate::database::save::Model {
-                                    user_id: msg.author.id.0,
+                                    user_id: *msg.author.id.as_u64(),
                                     exp: 3,
                                     level: 3,
                                     player: "Sakuya".to_string(),
@@ -114,7 +113,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
     Ok(())
 }
 
-// 操作の埋め込み
+/// 操作の埋め込み
 async fn operation_enemy(
     ctx: &serenity::client::Context,
     msg: &Message,
@@ -132,7 +131,7 @@ async fn operation_enemy(
         .context("埋め込みの作成に失敗しました")
 }
 
-// 結果の埋め込み
+/// 結果の埋め込み
 async fn result_battle(
     ctx: &serenity::client::Context,
     msg: &Message,

@@ -33,9 +33,9 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .group(&RELATION_GROUP);
 
-    let token = env::var("DISCORD_TOKEN").expect("Not found token");
+    let discord_token = setting::setup::config_parse_toml().await.token();
 
-    let mut client = Client::builder(&token)
+    let mut client = Client::builder(&discord_token)
         .event_handler(Handler)
         .framework(framework)
         .await

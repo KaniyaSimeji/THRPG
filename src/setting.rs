@@ -5,7 +5,7 @@ pub mod setup {
 
     static NULL_ADDRESS: Lazy<String> = Lazy::new(|| "null.address".to_string());
 
-    // THRPG.toml params
+    /// THRPG.toml params
     #[derive(Deserialize, Serialize)]
     pub struct Config {
         token: String,
@@ -41,7 +41,7 @@ pub mod setup {
         toml
     }
 
-    // format is {uuid}.null.address
+    /// format is {uuid}.null.address
     pub fn address_random() -> String {
         let url_string = format!("{}.{}", uuid::Uuid::new_v4(), *NULL_ADDRESS);
         url::Url::parse(&url_string).unwrap().into()
@@ -137,9 +137,9 @@ pub mod i18n {
         pub sakuya_name: String,
         pub sakuya_description: String,
         pub reimu_name: String,
-        pub reimu_descrition: String,
+        pub reimu_description: String,
         pub marisa_name: String,
-        pub marisa_descrition: String,
+        pub marisa_description: String,
     }
 
     pub async fn i18n_text(language: Languages) -> Bottexts {

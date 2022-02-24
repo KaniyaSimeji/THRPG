@@ -1,8 +1,6 @@
-[profile]
 name = "博麗霊夢"
 power = 100
 guard = 100
 speed = 100
 hp = 100
 mp = 100
-spellcard = "夢想封印"

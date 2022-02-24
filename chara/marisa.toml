@@ -1,8 +1,6 @@
-[profile]
 name = "霧雨魔理沙"
 power = 100
 guard = 100
 speed = 100
 hp = 100
 mp = 100
-spellcard = "マスタースパーク"

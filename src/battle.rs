@@ -3,13 +3,11 @@ pub mod charabase {
     use rand::prelude::IteratorRandom;
     use serde::Deserialize;
     use std::path::{Path, PathBuf};
-    use tokio::fs;
 
-    pub(crate) async fn read_enemy<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaBase> {
+    pub(crate) fn read_enemy<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaBase> {
         let chara_data = {
-            let file_content = fs::read_to_string(toml_path)
-                .await
-                .context("ファイルを読み込めませんでした")?;
+            let file_content =
+                std::fs::read_to_string(toml_path).context("ファイルを読み込めませんでした")?;
 
             toml::from_str(file_content.as_str())
         }
@@ -19,29 +17,23 @@ pub mod charabase {
     }
 
     // For example:
-    // toml_dir_path : i18n
-    pub async fn random_enemy<T: AsRef<Path>>(toml_dir_path: T) -> anyhow::Result<CharaBase> {
+    // toml_dir_path : chara
+    pub async fn random_enemy<T: AsRef<Path>>(
+        toml_dir_path: T,
+    ) -> Result<CharaBase, anyhow::Error> {
         if toml_dir_path.as_ref().is_dir() {
             let mut vec: Vec<PathBuf> = Vec::new();
-            for entry in tokio::fs::read_dir(toml_dir_path)
+            let mut entries = tokio::fs::read_dir(toml_dir_path)
                 .await
-                .context("ディレクトリが読み込めません")
-            {
-                let mut entry_mut = entry;
-                vec.push(
-                    entry_mut
-                        .next_entry()
-                        .await
-                        .context("IO error")?
-                        .context("Not found")?
-                        .path(),
-                );
+                .context("ディレクトリが読み込めません")?;
+            while let Some(entry) = entries.next_entry().await? {
+                let dir_entrey = entry.path();
+
+                vec.push(dir_entrey);
             }
             let mut rng = rand::thread_rng();
-            let random_path = vec.iter().choose(&mut rng).unwrap();
-            let enemy = read_enemy(random_path)
-                .await
-                .context("ファイルがありません");
+            let random_path = vec.iter().choose(&mut rng).unwrap().clone();
+            let enemy = read_enemy(random_path);
             enemy
         } else {
             Err(anyhow::anyhow!("ディレクトリではありません"))
@@ -68,9 +60,9 @@ pub mod charabase {
 
     #[derive(Deserialize)]
     pub enum AbnormalState {
-        Slowed,   // チルノとか
-        Poisoned, //メディスンとか
-        Unlucky,  // 鍵山雛とか
+        Slowed,
+        Poisoned,
+        Unlucky,
     }
 }
 
