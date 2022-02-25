@@ -11,12 +11,12 @@ env:
 
 jobs:
   check:
+    name: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: rust init
     - uses: actions-rs/toolchain@v1
-      with : 
+      with: 
         toolchain: stable
     - uses: actions-rs/cargo@v1
       with:
