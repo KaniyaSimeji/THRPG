@@ -1,11 +1,6 @@
-mod battle;
-mod command;
-mod database;
-mod log;
-mod setting;
-
 use std::collections::HashSet;
-use std::env;
+use thrpg::command::{author::RELATION_GROUP, play::GENERAL_GROUP};
+use thrpg::setting::setup;
 
 use serenity::{
     async_trait,
@@ -18,12 +13,15 @@ use serenity::{
     Client,
 };
 
-use command::author::RELATION_GROUP;
-use command::play::GENERAL_GROUP;
 struct Handler;
 
 #[async_trait]
-impl EventHandler for Handler {}
+impl EventHandler for Handler {
+    async fn ready(&self, ctx: Context, _: serenity::model::gateway::Ready) {
+        ctx.set_activity(serenity::model::gateway::Activity::playing("th!"))
+            .await;
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +31,7 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .group(&RELATION_GROUP);
 
-    let discord_token = setting::setup::config_parse_toml().await.token();
+    let discord_token = setup::config_parse_toml().await.token();
 
     let mut client = Client::builder(&discord_token)
         .event_handler(Handler)

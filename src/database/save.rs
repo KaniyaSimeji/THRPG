@@ -7,10 +7,10 @@ use sea_orm::{entity::prelude::*, DeriveEntityModel};
 #[sea_orm(table_name = "userdata")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub user_id: u64,
+    pub user_id: i64,
     pub player: String,
-    pub level: u32,
-    pub exp: u32,
+    pub level: i64,
+    pub exp: i64,
 }
 
 #[derive(Clone, Copy, Debug, EnumIter)]
@@ -54,6 +54,6 @@ pub async fn save(db: &DbConn, savedata: Model) {
             exp: sea_orm::ActiveValue::Set(savedata.exp),
         };
 
-        new_data.save(db).await.unwrap();
+        new_data.insert(db).await.unwrap();
     }
 }

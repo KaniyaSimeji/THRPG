@@ -1,3 +1,13 @@
+# rust files
 /target
+/thrpg-lua/target
+
+# editor files
 /.vscode
+
+# config files
 THRPG.toml
+
+# db files
+postgres/
+redis/

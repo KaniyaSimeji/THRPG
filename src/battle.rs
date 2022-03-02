@@ -40,6 +40,12 @@ pub mod charabase {
         }
     }
 
+    #[derive(Deserialize)]
+    pub struct CharaConfig {
+        pub base: CharaBase,
+        pub attack: Vec<CharaAttack>,
+        pub meta: CharaMeta,
+    }
     #[derive(Debug, Clone, Deserialize)]
     pub struct CharaBase {
         pub name: String,
@@ -64,22 +70,116 @@ pub mod charabase {
         Poisoned,
         Unlucky,
     }
-}
 
-pub mod chara_enemy {
-    pub struct CharaEnemy {
-        pub base: super::charabase::CharaBase,
-        pub attack: Vec<super::charabase::CharaAttack>,
-        pub exp: u32,
-    }
-}
-
-pub mod chara_player {
-    pub struct CharaPlayer {
-        pub base: super::charabase::CharaBase,
-        pub attack: Vec<super::charabase::CharaAttack>,
-        pub required_exp: u32,
+    #[derive(Deserialize)]
+    pub struct CharaMeta {
+        pub levelup_exp: LevelupExpType,
+        pub species_type: SpeciesType,
+        pub get_exp: u32,
+        pub skill_type: u32,
     }
 
-    enum CharaSkill {}
+    #[derive(Deserialize)]
+    pub enum LevelupExpType {
+        Early,
+        Normal,
+        Late,
+    }
+
+    #[derive(Deserialize)]
+    pub enum SpeciesType {
+        Human { detailed_overview: String },
+        Yokai { detailed_overview: String },
+        Fairy { detailed_overview: String },
+        Magician,
+        Witch,
+        Vampire,
+        Yukionna,
+        Shikigami,
+        Poltergeists,
+        HanzinHanrei, // Half-human half-phantom
+        Ghost,
+        Oni,
+        NightSparrow,
+        WereHakutaku,
+        Rabbit { detailed_overview: String },
+        Tengu { detailed_overview: String },
+        Doll,
+        Shinigami,
+        Yamaxanadu,
+        Kami { detailed_overview: String },
+        Kappa,
+        Tennin,
+        TsurubeOtoshi,
+        Tsuchigumo,
+        Hashihime,
+        Satori,
+        Kasha,
+        HellRaven,
+        KarakasaObake,
+        ShipGhost,
+        Nue,
+        Yamabiko,
+        Jiangshi,
+        Hermit,
+        Taoist,
+        Saint,
+        Tanuki,
+        Menreiki,
+        Mermaid,
+        Rokurokubi,
+        Werewolf,
+        Tsukumogami,
+        Amanojaku,
+        Kobito,
+        Baku,
+        DivineSpirit,
+        Yamauba,
+        Komainu,
+        Soul,
+        Jidiao,
+        Haniwa,
+        Kurokoma,
+        Taotie,
+        Manekineko,
+        Yamawaro,
+        KudaKitsune,
+        Oomukade,
+    }
+
+    pub enum SkillType {
+        Lucky(LuckyLevel),
+        Effort,
+    }
+
+    pub enum LuckyLevel {
+        LuckyOne,
+        LuckyTwo,
+        LuckyThree,
+    }
+
+    pub fn lucky_number(lucky_level: LuckyLevel) -> f32 {
+        match lucky_level {
+            LuckyLevel::LuckyOne => 1.1,
+            LuckyLevel::LuckyTwo => 1.3,
+            LuckyLevel::LuckyThree => 1.5,
+        }
+    }
+
+    /// Amount of exp earned in battle
+    /// Exp = 18 + (Enemy level*2 - my level) * {enemy appear}th boss (* lucky_number)
+    ///
+    pub fn math_exp(
+        enemy_level: u32,
+        my_level: u32,
+        enemy_appear: u8,
+        lucky_level: Option<LuckyLevel>,
+    ) -> f32 {
+        let mut base_exp = (18 + (enemy_level * 2 - my_level) * enemy_appear as u32) as f32;
+        if let Some(l) = lucky_level {
+            base_exp *= lucky_number(l)
+        }
+
+        base_exp as f32
+    }
 }

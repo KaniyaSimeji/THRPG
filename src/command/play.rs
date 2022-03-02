@@ -91,8 +91,8 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                             save(
                                 &dbconn,
                                 crate::database::save::Model {
-                                    user_id: *msg.author.id.as_u64(),
-                                    exp: 3,
+                                    user_id: *msg.author.id.as_u64() as i64,
+                                    exp: 5,
                                     level: 3,
                                     player: "Sakuya".to_string(),
                                 },

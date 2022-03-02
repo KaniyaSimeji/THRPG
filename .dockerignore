@@ -1,0 +1,7 @@
+.vscode
+target
+.git
+.github
+.gitignore
+postgres
+redis

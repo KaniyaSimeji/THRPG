@@ -1,0 +1,10 @@
+token="your bot token"
+prefix="th!" # your bot prefix
+manager_id= #your userid
+language="Japanese" # used language in your bot 
+
+[postgresql_config]
+db_address="postgres://postgres@localhost/thrpg" # postgresql server address
+
+[redis_config]
+db_address="" # redis server address

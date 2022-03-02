@@ -33,6 +33,29 @@ pub mod setup {
         English,
     }
 
+    #[derive(Deserialize, Serialize)]
+    pub struct BOTInfo {
+        name: String,
+        author: String,
+        version: String,
+        website: String,
+        repository: String,
+        license: String,
+    }
+
+    impl BOTInfo {
+        pub fn info() -> Self {
+            Self {
+                name: env!("CARGO_PKG_NAME").to_string(),
+                author: env!("CARGO_PKG_AUTHORS").to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                website: env!("CARGO_PKG_HOMEPAGE").to_string(),
+                repository: env!("CARGO_PKG_REPOSITORY").to_string(),
+                license: env!("CARGO_PKG_LICENSE").to_string(),
+            }
+        }
+    }
+
     pub async fn config_parse_toml() -> Config {
         // Setting file is "THRPG.toml"
         let path = PathBuf::from("THRPG.toml");
@@ -147,11 +170,11 @@ pub mod i18n {
         let en_contents = tokio::fs::read_to_string(&*ENGLISH_PATH).await.unwrap();
 
         match language {
-            Japanese => {
+            Languages::Japanese => {
                 let japanese_toml: Bottexts = toml::from_str(&ja_contents).expect("Not read toml");
                 japanese_toml
             }
-            English => {
+            Languages::English => {
                 let english_toml: Bottexts = toml::from_str(&en_contents).expect("Not read toml");
                 english_toml
             }

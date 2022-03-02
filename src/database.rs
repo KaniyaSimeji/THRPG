@@ -21,6 +21,6 @@ pub mod postgres_connect {
     pub async fn connect(
         url: impl Into<String>,
     ) -> Result<sea_orm::DatabaseConnection, sea_orm::DbErr> {
-        sea_orm::Database::connect(url.into()).await
+        sea_orm::Database::connect(url.into().to_owned()).await
     }
 }
