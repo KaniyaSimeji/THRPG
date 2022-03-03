@@ -1,5 +1,8 @@
 use crate::battle::charabase::random_enemy;
-use crate::database::{postgres_connect, save::save};
+use crate::database::{
+    postgres_connect,
+    save::{delete as userdata_delete, save},
+};
 use crate::setting::{
     i18n::i18n_text,
     setup::{config_parse_toml, Languages},
@@ -91,7 +94,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                             save(
                                 &dbconn,
                                 crate::database::save::Model {
-                                    user_id: *msg.author.id.as_u64() as i64,
+                                    user_id: (*msg.author.id.as_u64()).to_string(),
                                     exp: 5,
                                     level: 3,
                                     player: "Sakuya".to_string(),
@@ -106,6 +109,61 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                     },
                     _ => break,
                 };
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[command]
+#[description = "セーブデータを削除する"]
+pub async fn delete(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
+    let reactions = [
+        ReactionType::Unicode("⭕".to_string()),
+        ReactionType::Unicode("❌".to_string()),
+    ];
+
+    let question = msg
+        .channel_id
+        .send_message(&ctx.http, |f| {
+            f.embed(|e| {
+                e.title("本当に削除してもよろしいでしょうか？")
+                    .description("削除したデータは二度と戻ってきません")
+            })
+            .reactions(reactions.into_iter())
+        })
+        .await
+        .context("埋め込みの作成に失敗しました")?;
+
+    if let Some(reaction) = &question
+        .await_reaction(&ctx)
+        .timeout(Duration::from_secs(10))
+        .author_id(msg.author.id)
+        .await
+    {
+        let emoji = &reaction.as_inner_ref().emoji;
+        match emoji.as_data().as_str() {
+            "⭕" => match config_parse_toml().await.postgresql_config() {
+                Some(url) => {
+                    let url_string = url.db_address.unwrap();
+                    let dbconn = postgres_connect::connect(url_string)
+                        .await
+                        .expect("Invelid URL");
+                    userdata_delete(&dbconn, *msg.author.id.as_u64()).await;
+                }
+                None => {
+                    error_embed_message(ctx, msg, "データベースに接続できません").await?;
+                }
+            },
+            "❌" => {
+                msg.channel_id
+                    .send_message(&ctx.http, |f| f.embed(|e| e.title("削除を取り消します")))
+                    .await
+                    .context("埋め込みの作成に失敗しました")?;
+            }
+            _ => {
+                error_embed_message(ctx, msg, "正しい反応を選んで下さい").await?;
             }
         }
     }

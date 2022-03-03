@@ -7,7 +7,7 @@ use sea_orm::{entity::prelude::*, DeriveEntityModel};
 #[sea_orm(table_name = "userdata")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub user_id: i64,
+    pub user_id: String,
     pub player: String,
     pub level: i64,
     pub exp: i64,
@@ -39,7 +39,12 @@ impl ActiveModelBehavior for ActiveModel {}
 //
 
 pub async fn save(db: &DbConn, savedata: Model) {
-    if let Some(userdata) = Entity::find_by_id(savedata.user_id).one(db).await.unwrap() {
+    let user_id_string = &savedata.user_id;
+    if let Some(userdata) = Entity::find_by_id(user_id_string.to_string())
+        .one(db)
+        .await
+        .unwrap()
+    {
         let mut userdata_mut: ActiveModel = userdata.into();
         userdata_mut.player = sea_orm::entity::Set(savedata.player);
         userdata_mut.level = sea_orm::entity::Set(savedata.level);
@@ -55,5 +60,15 @@ pub async fn save(db: &DbConn, savedata: Model) {
         };
 
         new_data.insert(db).await.unwrap();
+    }
+}
+
+pub async fn delete(db: &DbConn, user_id: u64) {
+    if let Some(userdata) = Entity::find_by_id(user_id.to_string())
+        .one(db)
+        .await
+        .unwrap()
+    {
+        userdata.delete(db).await.unwrap();
     }
 }
