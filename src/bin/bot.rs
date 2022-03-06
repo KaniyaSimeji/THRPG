@@ -18,15 +18,24 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, _: serenity::model::gateway::Ready) {
-        ctx.set_activity(serenity::model::gateway::Activity::playing("th!"))
-            .await;
+        ctx.set_activity(serenity::model::gateway::Activity::playing(
+            setup::config_parse_toml()
+                .await
+                .prefix()
+                .unwrap_or("th!".to_string()),
+        ))
+        .await;
     }
 }
 
 #[tokio::main]
 async fn main() {
+    let prefix = setup::config_parse_toml()
+        .await
+        .prefix()
+        .unwrap_or("th!".to_string());
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix("th!"))
+        .configure(|c| c.prefix(prefix))
         .help(&HELP)
         .group(&GENERAL_GROUP)
         .group(&RELATION_GROUP);

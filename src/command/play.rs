@@ -1,15 +1,18 @@
-use crate::battle::charabase::random_enemy;
+use crate::battle::charabase::{random_enemy, BattleData};
 use crate::database::{
-    postgres_connect,
+    postgres_connect, redis_connect,
     save::{delete as userdata_delete, save},
 };
 use crate::setting::{
     i18n::i18n_text,
     setup::{config_parse_toml, Languages},
 };
+use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::Context;
+use redis::AsyncCommands;
+use serde_redis::RedisDeserialize;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::CommandResult;
 use serenity::model::channel::Message;
@@ -30,21 +33,37 @@ const BATTLE_ITEM: &str = "⚗️";
 const BATTLE_GUARD: &str = "\u{1F6E1}";
 
 #[group]
-#[commands(ping, play)]
+#[commands(play, delete)]
 pub struct General;
-
-#[command]
-pub async fn ping(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
-    if msg.author.bot != true {
-        msg.reply(ctx, "hello").await?;
-    }
-    Ok(())
-}
 
 /// play
 #[command]
 #[description = "ゲームをプレイする"]
 pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
+    let mut redis_async_connect = redis_connect::connect(
+        config_parse_toml()
+            .await
+            .redis_config()
+            .unwrap()
+            .db_address
+            .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    // only to debug
+    println!(
+        "{:?}",
+        redis_async_connect
+            .hset(msg.author.id.0, "nakami", "honebuto")
+            .await?
+    );
+
+    // "hgetall" is bad!
+    let vals: HashMap<String, String> = redis_async_connect.hgetall(msg.author.id.0).await?;
+    println!("{:?}", vals);
+    // fin
+
     let chara_name = random_enemy("chara").await.unwrap().name;
     let appear_enemy = i18n_text(Languages::Japanese)
         .await
@@ -52,63 +71,66 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
         .appear_enemy;
 
     if msg.author.bot != true {
-        // 敵の出現
-        let _ = msg
-            .channel_id
-            .send_message(&ctx.http, |f| {
-                f.embed(|e| {
-                    {
-                        e.title(format!("{chara_name}{appear_enemy}"))
-                            .description("ank".to_string())
-                    }
+        if true {
+            // 敵の出現
+            let _ = msg
+                .channel_id
+                .send_message(&ctx.http, |f| {
+                    f.embed(|e| {
+                        {
+                            e.title(format!("{chara_name}{appear_enemy}"))
+                                .description("ank".to_string())
+                        }
+                    })
                 })
-            })
-            .await?;
+                .await?;
 
-        let mut msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?;
+            let mut msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?;
 
-        // もし絵文字が付いたら行う処理
-        loop {
-            if let Some(reaction) = &msg_embed
-                .await_reaction(&ctx)
-                .timeout(Duration::from_secs(10))
-                .author_id(msg.author.id)
-                .await
-            {
-                let emoji = &reaction.as_inner_ref().emoji;
-                let _ = match emoji.as_data().as_str() {
-                    BATTLE_PLAY => {
-                        result_battle(ctx, msg).await?;
-                        msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
-                    }
-                    BATTLE_GUARD => {
-                        guard_attack(ctx, msg).await?;
-                        msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
-                    }
-                    BATTLE_SAVE => match config_parse_toml().await.postgresql_config() {
-                        Some(url) => {
-                            let url_string = url.db_address.unwrap();
-                            let dbconn = postgres_connect::connect(url_string)
-                                .await
-                                .expect("Invelid URL");
-                            save(
-                                &dbconn,
-                                crate::database::save::Model {
-                                    user_id: (*msg.author.id.as_u64()).to_string(),
-                                    exp: 5,
-                                    level: 3,
-                                    player: "Sakuya".to_string(),
-                                },
-                            )
-                            .await;
+            // もし絵文字が付いたら行う処理
+            loop {
+                if let Some(reaction) = &msg_embed
+                    .await_reaction(&ctx)
+                    .timeout(Duration::from_secs(10))
+                    .author_id(msg.author.id)
+                    .await
+                {
+                    let emoji = &reaction.as_inner_ref().emoji;
+                    let _ = match emoji.as_data().as_str() {
+                        BATTLE_PLAY => {
+                            result_battle(ctx, msg).await?;
+                            msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
                         }
-                        None => {
-                            error_embed_message(ctx, msg, "データベースに接続できません").await?;
-                            break;
+                        BATTLE_GUARD => {
+                            guard_attack(ctx, msg).await?;
+                            msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
                         }
-                    },
-                    _ => break,
-                };
+                        BATTLE_SAVE => match config_parse_toml().await.postgresql_config() {
+                            Some(url) => {
+                                let url_string = url.db_address.unwrap();
+                                let dbconn = postgres_connect::connect(url_string)
+                                    .await
+                                    .expect("Invelid URL");
+                                save(
+                                    &dbconn,
+                                    crate::database::save::Model {
+                                        user_id: (*msg.author.id.as_u64()).to_string(),
+                                        exp: 5,
+                                        level: 3,
+                                        player: "Sakuya".to_string(),
+                                    },
+                                )
+                                .await;
+                            }
+                            None => {
+                                error_embed_message(ctx, msg, "データベースに接続できません")
+                                    .await?;
+                                break;
+                            }
+                        },
+                        _ => break,
+                    };
+                }
             }
         }
     }

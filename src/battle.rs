@@ -1,7 +1,7 @@
 pub mod charabase {
     use anyhow::Context;
     use rand::prelude::IteratorRandom;
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
     use std::path::{Path, PathBuf};
 
     pub(crate) fn read_enemy<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaBase> {
@@ -46,7 +46,7 @@ pub mod charabase {
         pub attack: Vec<CharaAttack>,
         pub meta: CharaMeta,
     }
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct CharaBase {
         pub name: String,
         pub power: u8,
@@ -181,5 +181,13 @@ pub mod charabase {
         }
 
         base_exp as f32
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct BattleData {
+        pub player_data: CharaBase,
+        pub enemy_data: CharaBase,
+        pub elapesd_turns: u32,
+        pub start_time: chrono::prelude::DateTime<chrono::prelude::Local>,
     }
 }

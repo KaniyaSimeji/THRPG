@@ -1577,6 +1577,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-redis"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78a6774398484da90606c597852a9662188a3611c912ed6eb29fc81812605c0d"
+dependencies = [
+ "redis",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.135"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1909,11 +1919,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "chrono",
  "once_cell",
  "rand 0.8.4",
  "redis",
  "sea-orm",
  "serde",
+ "serde-redis",
  "serenity",
  "thiserror",
  "tokio",
