@@ -1,5 +1,6 @@
 pub mod charabase {
     use anyhow::Context;
+    use once_cell::sync::Lazy;
     use rand::prelude::IteratorRandom;
     use serde::{Deserialize, Serialize};
     use std::path::{Path, PathBuf};
@@ -16,11 +17,9 @@ pub mod charabase {
         Ok(chara_data)
     }
 
-    // For example:
-    // toml_dir_path : chara
-    pub async fn random_enemy<T: AsRef<Path>>(
+    pub async fn dir_files<T: AsRef<Path>>(
         toml_dir_path: T,
-    ) -> Result<CharaBase, anyhow::Error> {
+    ) -> Result<Vec<CharaBase>, anyhow::Error> {
         if toml_dir_path.as_ref().is_dir() {
             let mut vec: Vec<PathBuf> = Vec::new();
             let mut entries = tokio::fs::read_dir(toml_dir_path)
@@ -31,13 +30,22 @@ pub mod charabase {
 
                 vec.push(dir_entrey);
             }
-            let mut rng = rand::thread_rng();
-            let random_path = vec.iter().choose(&mut rng).unwrap().clone();
-            let enemy = read_enemy(random_path);
-            enemy
+
+            vec.iter().map(|file| read_enemy(file)).collect()
         } else {
-            Err(anyhow::anyhow!("ディレクトリではありません"))
+            Err(anyhow::anyhow!("not directory"))
         }
+    }
+
+    // For example:
+    // toml_dir_path : chara
+    pub async fn random_enemy<T: AsRef<Path>>(
+        toml_dir_path: T,
+    ) -> Result<CharaBase, anyhow::Error> {
+        let files = dir_files(toml_dir_path).await.unwrap();
+        let mut rng = rand::thread_rng();
+        let random_enemy = files.iter().choose(&mut rng).unwrap().clone();
+        Ok(random_enemy)
     }
 
     #[derive(Deserialize)]
@@ -46,7 +54,7 @@ pub mod charabase {
         pub attack: Vec<CharaAttack>,
         pub meta: CharaMeta,
     }
-    #[derive(Debug, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct CharaBase {
         pub name: String,
         pub power: u8,
@@ -54,6 +62,71 @@ pub mod charabase {
         pub speed: u8,
         pub hp: u8,
         pub mp: u8,
+    }
+
+    impl CharaBase {
+        pub async fn chara_new(name_arg: String) -> anyhow::Result<CharaBase> {
+            static REIMU_REGEX: Lazy<regex::Regex> =
+                Lazy::new(|| regex::Regex::new(r"(?i)(^(h|H)+akurei)?(r|R)eimu$").unwrap());
+
+            let reimu_parse = REIMU_REGEX.replace(&name_arg, "Reimu").into_owned();
+            let _: anyhow::Result<CharaBase> = match reimu_parse.as_str() {
+                "Reimu" => {
+                    let chara_datas = dir_files("chara").await.unwrap();
+                    let reimu_data = chara_datas
+                        .into_iter()
+                        .filter(|f| f.name == "博麗霊夢")
+                        .nth(0)
+                        .context("Not found")?;
+                    Ok(reimu_data)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "No regex {:?} {:?}",
+                    *REIMU_REGEX,
+                    &name_arg
+                )),
+            };
+
+            static MARISA_REGEX: Lazy<regex::Regex> =
+                Lazy::new(|| regex::Regex::new(r"(?i)(^(k|K)+irisame)?(m|M)arisa$").unwrap());
+            let marisa_parse = MARISA_REGEX.replace(&name_arg, "Marisa").into_owned();
+            let _: anyhow::Result<CharaBase> = match marisa_parse.as_str() {
+                "Marisa" => {
+                    let chara_datas = dir_files("chara").await.unwrap();
+                    let marisa_data = chara_datas
+                        .into_iter()
+                        .filter(|f| f.name == "霧雨魔理沙")
+                        .nth(0)
+                        .context("Not found")?;
+                    Ok(marisa_data)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "No regex {:?} {:?}",
+                    *MARISA_REGEX,
+                    &name_arg
+                )),
+            };
+
+            static SAKUYA_REGEX: Lazy<regex::Regex> =
+                Lazy::new(|| regex::Regex::new(r"(?i)(^(i|I)+zayoi)?(s|S)akuya$").unwrap());
+            let sakuya_parse = SAKUYA_REGEX.replace(&name_arg, "Sakuya").into_owned();
+            match sakuya_parse.as_str() {
+                "Sakuya" => {
+                    let chara_datas = dir_files("chara").await.unwrap();
+                    let sakuya_data = chara_datas
+                        .into_iter()
+                        .filter(|f| f.name == "十六夜咲夜")
+                        .nth(0)
+                        .context("Not found")?;
+                    Ok(sakuya_data)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "No regex {:?} {:?}",
+                    *SAKUYA_REGEX,
+                    &name_arg
+                )),
+            }
+        }
     }
 
     #[derive(Deserialize)]
@@ -183,11 +256,13 @@ pub mod charabase {
         base_exp as f32
     }
 
-    #[derive(Debug, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub struct BattleData {
         pub player_data: CharaBase,
         pub enemy_data: CharaBase,
+        pub enemy_damage: u32,
         pub elapesd_turns: u32,
         pub start_time: chrono::prelude::DateTime<chrono::prelude::Local>,
+        pub start_turn: u32,
     }
 }
