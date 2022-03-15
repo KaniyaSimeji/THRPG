@@ -72,3 +72,16 @@ pub async fn delete(db: &DbConn, user_id: u64) {
         userdata.delete(db).await.unwrap();
     }
 }
+
+pub async fn update_player(db: &DbConn, user_id: u64, player: String) {
+    let userdata: Option<Model> = Entity::find_by_id(user_id.to_string())
+        .one(db)
+        .await
+        .unwrap();
+
+    let mut active_userdata: ActiveModel = userdata.unwrap().into();
+
+    active_userdata.player = sea_orm::entity::Set(player);
+
+    active_userdata.update(db).await.unwrap();
+}

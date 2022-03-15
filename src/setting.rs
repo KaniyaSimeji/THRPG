@@ -165,9 +165,9 @@ pub mod i18n {
         pub marisa_description: String,
     }
 
-    pub async fn i18n_text(language: Languages) -> Bottexts {
-        let ja_contents = tokio::fs::read_to_string(&*JAPANESE_PATH).await.unwrap();
-        let en_contents = tokio::fs::read_to_string(&*ENGLISH_PATH).await.unwrap();
+    pub fn i18n_text(language: Languages) -> Bottexts {
+        let ja_contents = std::fs::read_to_string(&*JAPANESE_PATH).unwrap();
+        let en_contents = std::fs::read_to_string(&*ENGLISH_PATH).unwrap();
 
         match language {
             Languages::Japanese => {

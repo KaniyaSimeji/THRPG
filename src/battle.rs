@@ -1,5 +1,6 @@
 pub mod charabase {
     use anyhow::Context;
+    use chrono::prelude::{DateTime, Local};
     use once_cell::sync::Lazy;
     use rand::prelude::IteratorRandom;
     use serde::{Deserialize, Serialize};
@@ -31,7 +32,7 @@ pub mod charabase {
                 vec.push(dir_entrey);
             }
 
-            vec.iter().map(|file| read_enemy(file)).collect()
+            vec.iter().map(read_enemy).collect()
         } else {
             Err(anyhow::anyhow!("not directory"))
         }
@@ -48,7 +49,7 @@ pub mod charabase {
         Ok(random_enemy)
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Debug, Clone, PartialEq, PartialOrd)]
     pub struct CharaConfig {
         pub base: CharaBase,
         pub attack: Vec<CharaAttack>,
@@ -68,6 +69,10 @@ pub mod charabase {
         pub async fn chara_new(name_arg: String) -> anyhow::Result<CharaBase> {
             static REIMU_REGEX: Lazy<regex::Regex> =
                 Lazy::new(|| regex::Regex::new(r"(?i)(^(h|H)+akurei)?(r|R)eimu$").unwrap());
+            static SAKUYA_REGEX: Lazy<regex::Regex> =
+                Lazy::new(|| regex::Regex::new(r"(?i)(^(i|I)+zayoi)?(s|S)akuya$").unwrap());
+            static MARISA_REGEX: Lazy<regex::Regex> =
+                Lazy::new(|| regex::Regex::new(r"(?i)(^(k|K)+irisame)?(m|M)arisa$").unwrap());
 
             let reimu_parse = REIMU_REGEX.replace(&name_arg, "Reimu").into_owned();
             let _: anyhow::Result<CharaBase> = match reimu_parse.as_str() {
@@ -75,8 +80,7 @@ pub mod charabase {
                     let chara_datas = dir_files("chara").await.unwrap();
                     let reimu_data = chara_datas
                         .into_iter()
-                        .filter(|f| f.name == "博麗霊夢")
-                        .nth(0)
+                        .find(|f| f.name == "博麗霊夢")
                         .context("Not found")?;
                     Ok(reimu_data)
                 }
@@ -87,16 +91,13 @@ pub mod charabase {
                 )),
             };
 
-            static MARISA_REGEX: Lazy<regex::Regex> =
-                Lazy::new(|| regex::Regex::new(r"(?i)(^(k|K)+irisame)?(m|M)arisa$").unwrap());
             let marisa_parse = MARISA_REGEX.replace(&name_arg, "Marisa").into_owned();
             let _: anyhow::Result<CharaBase> = match marisa_parse.as_str() {
                 "Marisa" => {
                     let chara_datas = dir_files("chara").await.unwrap();
                     let marisa_data = chara_datas
                         .into_iter()
-                        .filter(|f| f.name == "霧雨魔理沙")
-                        .nth(0)
+                        .find(|f| f.name == "霧雨魔理沙")
                         .context("Not found")?;
                     Ok(marisa_data)
                 }
@@ -107,16 +108,13 @@ pub mod charabase {
                 )),
             };
 
-            static SAKUYA_REGEX: Lazy<regex::Regex> =
-                Lazy::new(|| regex::Regex::new(r"(?i)(^(i|I)+zayoi)?(s|S)akuya$").unwrap());
             let sakuya_parse = SAKUYA_REGEX.replace(&name_arg, "Sakuya").into_owned();
             match sakuya_parse.as_str() {
                 "Sakuya" => {
                     let chara_datas = dir_files("chara").await.unwrap();
                     let sakuya_data = chara_datas
                         .into_iter()
-                        .filter(|f| f.name == "十六夜咲夜")
-                        .nth(0)
+                        .find(|f| f.name == "十六夜咲夜")
                         .context("Not found")?;
                     Ok(sakuya_data)
                 }
@@ -129,7 +127,7 @@ pub mod charabase {
         }
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, PartialEq, PartialOrd, Debug, Clone)]
     pub struct CharaAttack {
         pub name: String,
         pub damage: u32,
@@ -137,14 +135,14 @@ pub mod charabase {
         pub abnormal_state: Option<AbnormalState>,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
     pub enum AbnormalState {
         Slowed,
         Poisoned,
         Unlucky,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CharaMeta {
         pub levelup_exp: LevelupExpType,
         pub species_type: SpeciesType,
@@ -152,14 +150,14 @@ pub mod charabase {
         pub skill_type: u32,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
     pub enum LevelupExpType {
         Early,
         Normal,
         Late,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
     pub enum SpeciesType {
         Human { detailed_overview: String },
         Yokai { detailed_overview: String },
@@ -244,11 +242,11 @@ pub mod charabase {
     ///
     pub fn math_exp(
         enemy_level: u32,
-        my_level: u32,
+        player_level: u32,
         enemy_appear: u8,
         lucky_level: Option<LuckyLevel>,
     ) -> f32 {
-        let mut base_exp = (18 + (enemy_level * 2 - my_level) * enemy_appear as u32) as f32;
+        let mut base_exp = (18 + (enemy_level * 2 - player_level) * enemy_appear as u32) as f32;
         if let Some(l) = lucky_level {
             base_exp *= lucky_number(l)
         }
@@ -262,7 +260,37 @@ pub mod charabase {
         pub enemy_data: CharaBase,
         pub enemy_damage: u32,
         pub elapesd_turns: u32,
-        pub start_time: chrono::prelude::DateTime<chrono::prelude::Local>,
+        pub start_time: DateTime<Local>,
         pub start_turn: u32,
+    }
+
+    /// player -> enemy
+    pub fn calculate_player_damage(mut enemy: CharaConfig, player: &CharaConfig) -> CharaConfig {
+        let mut rng = rand::thread_rng();
+        let player_attack = player.attack.iter().choose(&mut rng).unwrap();
+        let to_enemy_damage = enemy.base.hp - player_attack.damage as u8;
+        enemy.base.hp = to_enemy_damage;
+        enemy
+    }
+
+    /// enemy -> player
+    pub fn calculate_enemy_damage(enemy: &CharaConfig, mut player: CharaConfig) -> CharaConfig {
+        let mut rng = rand::thread_rng();
+        let enemy_attack = enemy.attack.iter().choose(&mut rng).unwrap();
+        let to_player_damage = *&mut player.base.hp - enemy_attack.damage as u8;
+        player.base.hp = to_player_damage;
+        player
+    }
+
+    pub fn turn<'a>(player: &'a CharaConfig, enemy: &'a CharaConfig) -> Vec<&'a CharaConfig> {
+        let mut vec: Vec<&CharaConfig> = Vec::new();
+        if player.base.speed >= enemy.base.speed {
+            vec.push(player);
+            vec.push(enemy);
+        } else {
+            vec.push(enemy);
+            vec.push(player);
+        };
+        vec
     }
 }
