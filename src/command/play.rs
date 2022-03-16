@@ -3,11 +3,11 @@ use crate::battle::charabase::{
 };
 use crate::database::{
     postgres_connect,
-    save::{delete as userdata_delete, save, update_player, Entity, Model},
+    save::{delete as userdata_delete, save, update_player, Entity},
 };
 use crate::setting::{
     i18n::i18n_text,
-    setup::{config_parse_toml, Config, Languages},
+    setup::{config_parse_toml, Languages},
 };
 use anyhow::Context;
 use sea_orm::EntityTrait;

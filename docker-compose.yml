@@ -6,8 +6,6 @@ services:
     environment:
       POSTGRES_DB: thrpg
       POSTGRES_PASSWORD: thrpg
-    ports:
-      - "5432:5432"
     volumes:
       - ./postgres:/var/lib/postgres/data
 
@@ -16,8 +14,6 @@ services:
     restart: always
     healthcheck:
       test: ["CMD","redis-cli","ping"]
-    ports: 
-      - "6379:6379"
     volumes:
       - ./redis:/data
 
