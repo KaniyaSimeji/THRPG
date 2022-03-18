@@ -15,6 +15,7 @@ pub mod setup {
         postgresql_config: Option<PostgresqlConfig>,
         manager_id: u64,
         language: Option<Languages>,
+        timeout_duration: Option<u64>,
     }
 
     #[derive(Deserialize, Serialize)]
@@ -102,6 +103,10 @@ pub mod setup {
             } else {
                 Err(anyhow::anyhow!("No server address"))
             }
+        }
+
+        pub fn timeout_duration(&self) -> Option<u64> {
+            self.timeout_duration
         }
     }
 }

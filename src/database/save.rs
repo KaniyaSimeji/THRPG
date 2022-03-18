@@ -1,5 +1,5 @@
 use sea_orm::{entity::prelude::*, DeriveEntityModel};
-
+use uuid::Uuid;
 //
 // Make SeaORM entity
 //
@@ -11,6 +11,7 @@ pub struct Model {
     pub player: String,
     pub level: i64,
     pub exp: i64,
+    pub battle_uuid: Option<Uuid>,
 }
 
 #[derive(Clone, Copy, Debug, EnumIter)]
@@ -49,6 +50,7 @@ pub async fn save(db: &DbConn, savedata: Model) {
         userdata_mut.player = sea_orm::entity::Set(savedata.player);
         userdata_mut.level = sea_orm::entity::Set(savedata.level);
         userdata_mut.exp = sea_orm::entity::Set(savedata.exp);
+        userdata_mut.battle_uuid = sea_orm::entity::Set(savedata.battle_uuid);
 
         userdata_mut.update(db).await.unwrap();
     } else {
@@ -57,6 +59,7 @@ pub async fn save(db: &DbConn, savedata: Model) {
             player: sea_orm::ActiveValue::Set(savedata.player),
             level: sea_orm::ActiveValue::Set(savedata.level),
             exp: sea_orm::ActiveValue::Set(savedata.exp),
+            battle_uuid: sea_orm::ActiveValue::Set(savedata.battle_uuid),
         };
 
         new_data.insert(db).await.unwrap();

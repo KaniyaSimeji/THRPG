@@ -2,6 +2,7 @@ use crate::battle::charabase::{
     calculate_enemy_damage, calculate_player_damage, random_enemy, turn, CharaBase, CharaConfig,
 };
 use crate::database::{
+    playdata::Entity as PlaydataEntity,
     postgres_connect,
     save::{delete as userdata_delete, save, update_player, Entity},
 };
@@ -39,37 +40,68 @@ pub struct General;
 #[command]
 #[description = "ゲームをプレイする"]
 pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
-    let chara_random = random_enemy("chara").await?;
-    let chara_name = chara_random.name;
-
-    let userdata = match config_parse_toml().await.postgresql_config() {
-        Some(f) => {
-            let db_address = f.db_address.unwrap();
-            let dbconn = postgres_connect::connect(db_address)
-                .await
-                .expect("Invelid URL");
-            let userdata = Entity::find_by_id(msg.author.id.0.to_string())
-                .one(&dbconn)
-                .await?;
-            userdata
-        }
-        None => None,
-    };
-
     if !msg.author.bot {
+        let chara_random = random_enemy("chara").await?;
+
+        let userdata = match config_parse_toml().await.postgresql_config() {
+            Some(f) => {
+                let db_address = f.db_address.unwrap();
+                let dbconn = postgres_connect::connect(db_address)
+                    .await
+                    .expect("Invelid URL");
+                Entity::find_by_id(msg.author.id.0.to_string())
+                    .one(&dbconn)
+                    .await?
+            }
+            None => None,
+        };
+
+        let mut playerdata = match config_parse_toml().await.postgresql_config() {
+            Some(f) => {
+                let db_address = f.db_address.unwrap();
+                let dbconn = postgres_connect::connect(db_address)
+                    .await
+                    .expect("Invelid URL");
+                match userdata {
+                    Some(m) => match m.battle_uuid {
+                        Some(u) => PlaydataEntity::find_by_id(u).one(&dbconn).await?,
+                        None => None,
+                    },
+                    None => None,
+                }
+            }
+            None => None,
+        };
+
         // 敵の出現
-        let _ = msg
-            .channel_id
-            .send_message(&ctx.http, |f| {
-                f.embed(|e| {
-                    e.title(format!(
-                        "{chara_name}{appear_enemy}",
-                        appear_enemy = i18n_text(Languages::Japanese).game_message.appear_enemy
-                    ))
-                    .description("ank".to_string())
-                })
-            })
-            .await?;
+        match playerdata {
+            Some(d) => {
+                msg.channel_id
+                    .send_message(&ctx.http, |f| {
+                        f.embed(|e| {
+                            e.title(format!("{}とのバトルを再開します", d.enemy_name))
+                                .description(format!("{}ターン目です", d.start_turn))
+                        })
+                    })
+                    .await?;
+            }
+            None => {
+                msg.channel_id
+                    .send_message(&ctx.http, |f| {
+                        f.embed(|e| {
+                            e.title(format!(
+                                "{chara_name}{appear_enemy}",
+                                chara_name = chara_random.name,
+                                appear_enemy =
+                                    i18n_text(Languages::Japanese).game_message.appear_enemy
+                            ))
+                            .description("ank".to_string())
+                        })
+                    })
+                    .await?;
+                playerdata = Some(crate::database::playdata::Model {});
+            }
+        }
 
         let mut msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?;
 
@@ -77,7 +109,9 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
         loop {
             if let Some(reaction) = &msg_embed
                 .await_reaction(&ctx)
-                .timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(
+                    config_parse_toml().await.timeout_duration().unwrap_or(10),
+                ))
                 .author_id(msg.author.id)
                 .await
             {
@@ -105,6 +139,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                                     exp: 5,
                                     level: 3,
                                     player: "Sakuya".to_string(),
+                                    battle_uuid: Some(uuid::Uuid::new_v4()),
                                 },
                             )
                             .await;
@@ -246,9 +281,11 @@ async fn result_battle(
     let vec = turn(&mut player_clone, &mut enemy_clone);
     let mut turn_vec = vec.into_iter().cycle();
     let turn = turn_vec.next().unwrap();
-    let damage = match turn.clone() {
-        playerdata => calculate_player_damage(enemydata, &playerdata),
-        enemydata => calculate_enemy_damage(&enemydata, playerdata),
+
+    let damage = if turn.clone() == playerdata {
+        calculate_player_damage(enemydata, &playerdata)
+    } else {
+        calculate_enemy_damage(&enemydata, playerdata)
     };
 
     msg.channel_id

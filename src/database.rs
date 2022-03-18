@@ -1,3 +1,4 @@
+pub mod playdata;
 pub mod save;
 pub mod score;
 
