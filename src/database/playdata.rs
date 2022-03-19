@@ -11,7 +11,6 @@ pub struct Model {
     pub enemy_name: String,
     pub elapesd_turns: u32,
     pub start_time: NaiveDateTime,
-    pub start_turn: u32,
 }
 
 #[derive(Clone, Copy, Debug, EnumIter)]

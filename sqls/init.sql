@@ -14,10 +14,10 @@ CREATE TABLE userdata (
 );
 
 CREATE TABLE playdata (
-	battle_uuid 	Uuid 	NOT NULL PRIMARY KEY
-    player 		text
-    enemy 		text
-    elapesd_turns 	bigint
-    start_time 	DataTime
+	battle_uuid 	Uuid 	NOT NULL PRIMARY KEY,
+    player 		text,
+    enemy 		text,
+    elapesd_turns 	bigint,
+    start_time 	timestamp,
     start_turn 	bigint
 );

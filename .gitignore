@@ -1,6 +1,5 @@
 # rust files
 /target
-/thrpg-lua/target
 
 # editor files
 /.vscode

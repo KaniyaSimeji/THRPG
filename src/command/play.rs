@@ -11,6 +11,7 @@ use crate::setting::{
     setup::{config_parse_toml, Languages},
 };
 use anyhow::Context;
+use chrono::prelude::Local;
 use sea_orm::EntityTrait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
@@ -62,7 +63,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                 let dbconn = postgres_connect::connect(db_address)
                     .await
                     .expect("Invelid URL");
-                match userdata {
+                match &userdata {
                     Some(m) => match m.battle_uuid {
                         Some(u) => PlaydataEntity::find_by_id(u).one(&dbconn).await?,
                         None => None,
@@ -74,13 +75,13 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
         };
 
         // 敵の出現
-        match playerdata {
+        match &playerdata {
             Some(d) => {
                 msg.channel_id
                     .send_message(&ctx.http, |f| {
                         f.embed(|e| {
                             e.title(format!("{}とのバトルを再開します", d.enemy_name))
-                                .description(format!("{}ターン目です", d.start_turn))
+                                .description(format!("{}ターン目です", d.elapesd_turns))
                         })
                     })
                     .await?;
@@ -91,7 +92,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                         f.embed(|e| {
                             e.title(format!(
                                 "{chara_name}{appear_enemy}",
-                                chara_name = chara_random.name,
+                                chara_name = chara_random.charabase.name,
                                 appear_enemy =
                                     i18n_text(Languages::Japanese).game_message.appear_enemy
                             ))
@@ -99,7 +100,19 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                         })
                     })
                     .await?;
-                playerdata = Some(crate::database::playdata::Model {});
+                let player_name = match userdata.clone() {
+                    Some(f) => f.player,
+                    None => "Reimu".to_string(),
+                };
+                let enemy_clone = chara_random.charabase.name.clone();
+                let now_datatime = Local::now().naive_local();
+                playerdata = Some(crate::database::playdata::Model {
+                    battle_id: uuid::Uuid::new_v4(),
+                    player_name: player_name.to_string(),
+                    enemy_name: enemy_clone,
+                    elapesd_turns: 0,
+                    start_time: now_datatime,
+                });
             }
         }
 
@@ -118,7 +131,15 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                 let emoji = &reaction.as_inner_ref().emoji;
                 let _ = match emoji.as_data().as_str() {
                     BATTLE_PLAY => {
-                        result_battle(ctx, msg, todo!(), todo!()).await?;
+                        result_battle(
+                            ctx,
+                            msg,
+                            CharaBase::chara_new(&playerdata.as_ref().unwrap().player_name)
+                                .await
+                                .unwrap(),
+                            chara_random.clone(),
+                        )
+                        .await?;
                         msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
                     }
                     BATTLE_GUARD => {
@@ -221,7 +242,7 @@ pub async fn set_chara(
     mut arg: Args,
 ) -> CommandResult {
     let arg_str = arg.trimmed().current().context("Not found arg")?;
-    let chara_data = CharaBase::chara_new(arg_str.to_string())
+    let chara_data = CharaBase::chara_new(&arg_str.to_string())
         .await
         .context("Invalid arg")?;
 
@@ -229,8 +250,11 @@ pub async fn set_chara(
         .channel_id
         .send_message(&ctx.http, |f| {
             f.embed(|e| {
-                e.title(format!("キャラクターを{}に変更しました", &chara_data.name))
-                    .description(" ")
+                e.title(format!(
+                    "キャラクターを{}に変更しました",
+                    &chara_data.charabase.name
+                ))
+                .description(" ")
             })
         })
         .await
@@ -242,7 +266,7 @@ pub async fn set_chara(
             let dbconn = postgres_connect::connect(url_string)
                 .await
                 .expect("Invelid URL");
-            update_player(&dbconn, msg.author.id.0, chara_data.name).await;
+            update_player(&dbconn, msg.author.id.0, chara_data.charabase.name).await;
         }
         None => {
             error_embed_message(ctx, msg, "データベースに接続できません").await?;
@@ -293,7 +317,7 @@ async fn result_battle(
             f.embed(|e| {
                 e.title(format!(
                     "結果は{}ダメージでした",
-                    turn.base.hp - damage.base.hp
+                    turn.charabase.hp - damage.charabase.hp
                 ))
                 .description("特記事項はなし！")
             })

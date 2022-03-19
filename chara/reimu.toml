@@ -1,6 +1,19 @@
+[charabase]
 name = "博麗霊夢"
 power = 100
 guard = 100
 speed = 100
 hp = 100
 mp = 100
+
+[[attack]]
+name = "夢想封印"
+damage = 70
+hit_rate = 0.9
+
+[meta]
+levelup_exp = "Normal"
+species_type = "Human"
+species_description = "巫女"
+get_exp = 100
+skill_type = "Lucky"

@@ -3,5 +3,3 @@ target
 .git
 .github
 .gitignore
-postgres
-redis
