@@ -24,7 +24,7 @@ pub struct RandomOption<'a, T: AsRef<Path>> {
     /// Whether the values of `player` and` enemy` may be the same
     pub allow_same_chara: bool,
     pub toml_dir_path: &'a T,
-    pub exclude_charas: Vec<String>,
+    pub exclude_charas: Option<Vec<String>>,
 }
 
 impl<T> Default for RandomOption<'_, T>
@@ -34,12 +34,12 @@ where
 {
     /// Default value
     /// `toml_dir_path`:`chara/`
-    /// `exclude_charas`: empty
-    /// `allow_same_chara`: false
+    /// `exclude_charas`: `None`
+    /// `allow_same_chara`: `false`
     fn default() -> Self {
         Self {
             toml_dir_path: "chara".as_ref(),
-            exclude_charas: Vec::new(),
+            exclude_charas: None,
             allow_same_chara: true,
         }
     }
@@ -128,8 +128,30 @@ impl BattleBuilder {
     {
         let charas = dir_files(random_options.toml_dir_path).await.unwrap();
         let mut rng = rand::thread_rng();
-        let chara = charas.into_iter().choose(&mut rng).unwrap();
-        self.enemy = Some(chara);
+        let mut chara = None;
+        if random_options.allow_same_chara == false {
+            while self.player != chara {
+                chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
+            }
+        } else if let Some(f) = random_options.exclude_charas {
+            if f.iter()
+                .any(|f| f == &chara.as_ref().unwrap().charabase.name)
+                == true
+            {
+                loop {
+                    chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
+                    if f.iter()
+                        .any(|f| f == &chara.as_ref().unwrap().charabase.name)
+                        != true
+                    {
+                        break;
+                    }
+                }
+            }
+        } else {
+            chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
+        }
+        self.enemy = chara;
         self
     }
 
