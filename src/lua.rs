@@ -1,9 +1,13 @@
 use anyhow::Context;
 use mlua::Lua;
-pub async fn lua_run(lua_state: Lua, content: &str) -> anyhow::Result<()> {
+
+pub async fn lua_async_run<T>(lua_state: Lua, content: T) -> anyhow::Result<()>
+where
+    T: AsRef<[u8]>,
+{
     lua_state
-        .load(content)
+        .load(&content)
         .set_name("thrpg")?
         .exec()
-        .context("run miss")
+        .context("Don't run")
 }
