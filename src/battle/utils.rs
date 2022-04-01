@@ -35,3 +35,22 @@ pub(crate) async fn dir_files<T: AsRef<Path>>(
         Err(anyhow::anyhow!("not directory"))
     }
 }
+
+/// directory files push vec no async
+pub(crate) fn dir_files_noasync<T: AsRef<Path>>(
+    toml_dir_path: T,
+) -> Result<Vec<CharaConfig>, anyhow::Error> {
+    if toml_dir_path.as_ref().is_dir() {
+        let mut vec: Vec<PathBuf> = Vec::new();
+        let entries = std::fs::read_dir(toml_dir_path).context("ディレクトリが読み込めません")?;
+        for entry in entries {
+            let dir_entrey = entry?.path();
+
+            vec.push(dir_entrey);
+        }
+
+        vec.iter().map(read_to_toml).collect()
+    } else {
+        Err(anyhow::anyhow!("not directory"))
+    }
+}

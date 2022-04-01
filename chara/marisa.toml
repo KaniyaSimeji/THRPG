@@ -16,4 +16,4 @@ levelup_exp = "Normal"
 species_type = "Human"
 species_description = "魔法使い"
 get_exp = 100
-skill_type = "Lucky"
+skill_type = "Effort"

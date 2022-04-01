@@ -8,8 +8,7 @@ RUN cargo build --release
 
 # bin
 FROM debian:bullseye
-# RUN mkdir
-WORKDIR /opt/thrpg/
+WORKDIR /opt/thrpg
 COPY chara/ chara/
 COPY i18n/ i18n/
 COPY THRPG.toml THRPG.toml

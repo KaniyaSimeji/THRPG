@@ -1,3 +1,8 @@
+use crate::battle::{
+    builder::{BattleBuilder, RandomOption},
+    model::CharaConfig,
+    rpg_core::PlayMode,
+};
 use crate::database::{
     playdata::Entity as PlaydataEntity,
     postgres_connect,
@@ -8,7 +13,7 @@ use crate::setting::{
     setup::{config_parse_toml, Languages},
 };
 use anyhow::Context;
-use chrono::prelude::Local;
+use once_cell::sync::Lazy;
 use sea_orm::EntityTrait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
@@ -16,22 +21,31 @@ use serenity::model::channel::Message;
 use serenity::model::channel::ReactionType;
 use std::time::Duration;
 
-/// バトルコマンドの時に使うコマンドの配列の取得
-pub fn battle_reactions() -> [ReactionType; 4] {
-    [
-        ReactionType::Unicode(BATTLE_PLAY.to_string()),
-        ReactionType::Unicode(BATTLE_GUARD.to_string()),
-        ReactionType::Unicode(BATTLE_ITEM.to_string()),
-        ReactionType::Unicode(BATTLE_SAVE.to_string()),
-    ]
+pub fn battle_reactions() -> Vec<ReactionType> {
+    let mut vec = Vec::new();
+    vec.push(ReactionType::Unicode(BATTLE_PLAY.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_GUARD.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_ITEM.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_SAVE.to_string()));
+    vec
 }
+
+static BATTLEREACTIONS: Lazy<Vec<ReactionType>> = Lazy::new(|| {
+    let mut vec = Vec::new();
+    vec.push(ReactionType::Unicode(BATTLE_PLAY.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_GUARD.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_ITEM.to_string()));
+    vec.push(ReactionType::Unicode(BATTLE_SAVE.to_string()));
+    vec
+});
+
 const BATTLE_PLAY: &str = "⚔";
 const BATTLE_ITEM: &str = "💊";
 const BATTLE_SAVE: &str = "✒️";
 const BATTLE_GUARD: &str = "\u{1F6E1}";
 
 #[group]
-#[commands(play, delete, set_chara)]
+#[commands(play, delete)]
 pub struct General;
 
 /// play
@@ -39,11 +53,10 @@ pub struct General;
 #[description = "ゲームをプレイする"]
 pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
     if !msg.author.bot {
-        //let mut chara_random = random_enemy("chara").await?;
-
-        let userdata = match config_parse_toml().await.postgresql_config() {
+        let postgresql_config = config_parse_toml().await.postgresql_config();
+        let userdata = match &postgresql_config {
             Some(f) => {
-                let db_address = f.db_address.unwrap();
+                let db_address = f.db_address.as_ref().unwrap();
                 let dbconn = postgres_connect::connect(db_address)
                     .await
                     .expect("Invelid URL");
@@ -54,7 +67,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
             None => None,
         };
 
-        let mut playerdata = match config_parse_toml().await.postgresql_config() {
+        let battledata = match postgresql_config {
             Some(f) => {
                 let db_address = f.db_address.unwrap();
                 let dbconn = postgres_connect::connect(db_address)
@@ -71,24 +84,47 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
             None => None,
         };
 
-        // 敵の出現
-        match &playerdata {
+        let mut battle = match battledata {
             Some(d) => {
-                msg.channel_id
-                    .send_message(&ctx.http, |f| {
-                        f.embed(|e| {
-                            e.title(format!("{}とのバトルを再開します", d.enemy_name))
-                                .description(format!("{}ターン目です", d.elapesd_turns))
-                        })
-                    })
-                    .await?;
-            }
-            None => {
+                let builder: BattleBuilder = d.into();
+                let battle = builder.build();
                 msg.channel_id
                     .send_message(&ctx.http, |f| {
                         f.embed(|e| {
                             e.title(format!(
-                                "{appear_enemy}",
+                                "{}とのバトルを再開します",
+                                battle.enemy().charabase.name
+                            ))
+                            .description(format!("{}ターン目です", battle.elapesd_turns()))
+                        })
+                    })
+                    .await?;
+                battle
+            }
+            None => {
+                let mut init = BattleBuilder::new(
+                    PlayMode::Simple,
+                    match &userdata {
+                        Some(d) => Some(d.clone().into()),
+                        None => None,
+                    },
+                    None,
+                    None,
+                );
+                let battle_builder = init
+                    .player(CharaConfig::chara_new("Reimu").await?)
+                    .enemy_random(RandomOption::default())
+                    .await
+                    .clone();
+
+                let battle = battle_builder.build();
+                // 敵の出現
+                msg.channel_id
+                    .send_message(&ctx.http, |f| {
+                        f.embed(|e| {
+                            e.title(format!(
+                                "{enemy}{appear_enemy}",
+                                enemy = &battle.enemy().charabase.name,
                                 appear_enemy =
                                     i18n_text(Languages::Japanese).game_message.appear_enemy
                             ))
@@ -96,94 +132,145 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message) -> CommandResu
                         })
                     })
                     .await?;
-                let player_name = match userdata.clone() {
-                    Some(f) => f.player,
-                    None => "Reimu".to_string(),
-                };
-                let now_datatime = Local::now().naive_local();
-                playerdata = Some(crate::database::playdata::Model {
-                    battle_id: uuid::Uuid::new_v4(),
-                    player_name: player_name.to_string(),
-                    enemy_name: todo!(),
-                    elapesd_turns: 0,
-                    start_time: now_datatime,
-                });
+                battle
             }
-        }
+        };
 
         let mut msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?;
 
-        // もし絵文字が付いたら行う処理
-        loop {
-            if let Some(reaction) = &msg_embed
-                .await_reaction(&ctx)
-                .timeout(Duration::from_secs(
-                    config_parse_toml().await.timeout_duration().unwrap_or(10),
-                ))
-                .author_id(msg.author.id)
-                .await
-            {
-                let emoji = &reaction.as_inner_ref().emoji;
-                let mut player_data = todo!();
-                /*
-                                    CharaBase::chara_new(&playerdata.as_ref().unwrap().player_name)
-                                        .await
-                                        .unwrap();
-                */
-                let _ = match emoji.as_data().as_str() {
-                    BATTLE_PLAY => {
-                        let battle_state = todo!();
-                        // result_battle(ctx, msg, &mut player_data, todo!()).await?;
-                        match battle_state {
-                            BattleState::BattleContinue => {
-                                msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
-                            }
-                            BattleState::PlayerDown => break,
-                            BattleState::EnemyDown => break,
-                        }
-                    }
-                    BATTLE_GUARD => {
-                        guard_attack(ctx, msg).await?;
-                        msg_embed = operation_enemy(ctx, msg, battle_reactions()).await?
-                    }
-                    BATTLE_SAVE => match config_parse_toml().await.postgresql_config() {
-                        Some(url) => {
-                            let url_string = url.db_address.unwrap();
-                            let dbconn = postgres_connect::connect(url_string)
-                                .await
-                                .expect("Invelid URL");
+        if !battle.is_running() {
+            loop {
+                // もし絵文字が付いたら行う処理
+                if let Some(reaction) = &msg_embed
+                    .await_reaction(&ctx)
+                    .timeout(Duration::from_secs(
+                        config_parse_toml().await.timeout_duration().unwrap_or(10),
+                    ))
+                    .author_id(msg.author.id)
+                    .await
+                {
+                    let emoji = &reaction.as_inner_ref().emoji;
+                    let _ = match emoji.as_data().as_str() {
+                        BATTLE_PLAY => {
+                            let battle_clone = battle.clone();
+                            let result = battle.result_battle().await;
 
-                            save(
-                                &dbconn,
-                                crate::database::save::Model {
-                                    user_id: msg.author.id.0.to_string(),
-                                    exp: match userdata.as_ref() {
-                                        Some(e) => e.exp,
-                                        None => 1,
-                                    },
-                                    level: match userdata.as_ref() {
-                                        Some(l) => l.level,
-                                        None => 1,
-                                    },
-                                    player: match userdata.as_ref() {
-                                        Some(p) => p.player.clone(),
-                                        None => "Reimu".to_string(),
-                                    },
-                                    battle_uuid: match playerdata.as_ref() {
-                                        Some(u) => Some(u.battle_id),
-                                        None => None,
-                                    },
-                                },
-                            )
-                            .await;
+                            if battle_clone.enemy().charabase.hp != result.enemy().charabase.hp
+                                && result.enemy().charabase.hp > 0
+                            {
+                                msg.channel_id
+                                    .send_message(&ctx.http, |f| {
+                                        f.embed(|e| {
+                                            let enemy = result.enemy();
+                                            e.title(format!("敵ののこりhp{}", enemy.charabase.hp))
+                                                .description(&enemy.charabase.name)
+                                        })
+                                    })
+                                    .await
+                                    .context("埋め込みの作成に失敗しました")?;
+                                battle.add_turn();
+
+                                msg_embed = operation_enemy(&ctx, &msg, battle_reactions())
+                                    .await
+                                    .unwrap()
+                            } else if battle_clone.player().charabase.hp
+                                != result.player().charabase.hp
+                                && result.player().charabase.hp > 0
+                            {
+                                msg.channel_id
+                                    .send_message(&ctx.http, |f| {
+                                        f.embed(|e| {
+                                            let player = result.player();
+                                            e.title(format!(
+                                                "味方ののこりhp{}",
+                                                player.charabase.hp
+                                            ))
+                                            .description(&player.charabase.name)
+                                        })
+                                    })
+                                    .await
+                                    .context("埋め込みの作成に失敗しました")?;
+                                battle.add_turn();
+
+                                msg_embed = operation_enemy(&ctx, &msg, battle_reactions())
+                                    .await
+                                    .unwrap()
+                            } else if result.player().charabase.hp <= 0 {
+                                msg.channel_id
+                                    .send_message(&ctx.http, |f| {
+                                        f.embed(|e| {
+                                            e.title(format!(
+                                                "{}に倒されてしまった",
+                                                result.enemy().charabase.name
+                                            ))
+                                        })
+                                    })
+                                    .await
+                                    .context("埋め込みの作成に失敗しました")?;
+                                break;
+                            } else if result.enemy().charabase.hp <= 0 {
+                                msg.channel_id
+                                    .send_message(&ctx.http, |f| {
+                                        f.embed(|e| {
+                                            e.title(format!(
+                                                "{}を倒した",
+                                                result.enemy().charabase.name
+                                            ))
+                                        })
+                                    })
+                                    .await
+                                    .context("埋め込みの作成に失敗しました")?;
+                                break;
+                            } else {
+                                break;
+                            }
                         }
-                        None => {
-                            error_embed_message(ctx, msg, "データベースに接続できません").await?;
+                        BATTLE_GUARD => {
+                            guard_attack(&ctx, &msg).await.unwrap();
+                            msg_embed = operation_enemy(&ctx, &msg, battle_reactions())
+                                .await
+                                .unwrap()
+                        }
+                        BATTLE_SAVE => match config_parse_toml().await.postgresql_config() {
+                            Some(url) => {
+                                let url_string = url.db_address.unwrap();
+                                let dbconn = postgres_connect::connect(url_string)
+                                    .await
+                                    .expect("Invelid URL");
+
+                                save(
+                                    &dbconn,
+                                    crate::database::save::Model {
+                                        user_id: msg.author.id.0.to_string(),
+                                        exp: match userdata.as_ref() {
+                                            Some(e) => e.exp,
+                                            None => 1,
+                                        },
+                                        level: match userdata.as_ref() {
+                                            Some(l) => l.level,
+                                            None => 1,
+                                        },
+                                        player: match userdata.as_ref() {
+                                            Some(p) => p.player.clone(),
+                                            None => "Reimu".to_string(),
+                                        },
+                                        battle_uuid: Some(battle.uuid()),
+                                    },
+                                )
+                                .await;
+                            }
+                            None => {
+                                error_embed_message(ctx, msg, "データベースに接続できません")
+                                    .await
+                                    .unwrap();
+                                break;
+                            }
+                        },
+                        _ => {
                             break;
                         }
-                    },
-                    _ => break,
-                };
+                    };
+                }
             }
         }
     }
@@ -258,11 +345,10 @@ pub async fn set_chara(
                               .await
                               .context("Invalid arg")?; */
 
-    let _ = msg
-        .channel_id
+    msg.channel_id
         .send_message(&ctx.http, |f| {
             f.embed(|e| {
-                e.title(format!("キャラクターを{}に変更しました", todo!()))
+                e.title(format!("キャラクターを{}に変更しました", arg_str))
                     .description(" ")
             })
         })
@@ -288,7 +374,7 @@ pub async fn set_chara(
 async fn operation_enemy(
     ctx: &serenity::client::Context,
     msg: &Message,
-    reactions: [ReactionType; 4],
+    reactions: Vec<ReactionType>,
 ) -> Result<Message, anyhow::Error> {
     msg.channel_id
         .send_message(&ctx.http, |f| {
@@ -301,65 +387,6 @@ async fn operation_enemy(
         .await
         .context("埋め込みの作成に失敗しました")
 }
-
-/// 結果の埋め込み
-
-/*async fn result_battle(
-    ctx: &serenity::client::Context,
-    msg: &Message,
-    mut playerdata: &CharaConfig,
-    mut enemydata: &CharaConfig,
-) -> anyhow::Result<BattleState> {
-    let vec = turn(&playerdata, &enemydata);
-    let mut turn_vec = vec.into_iter().cycle();
-    let turn = turn_vec.next().unwrap();
-
-    let player_hp_count = playerdata.charabase.hp;
-    let enemy_hp_count = enemydata.charabase.hp;
-    let damage = if turn.clone() == playerdata.clone() {
-        let mut enemydata_owned = enemydata.to_owned();
-        enemydata = calculate_player_damage(&mut enemydata_owned, playerdata);
-        enemydata_owned
-    } else {
-        let mut playerdata_owned = enemydata.to_owned();
-        playerdata = calculate_enemy_damage(enemydata, &mut playerdata_owned);
-        playerdata_owned
-    };
-
-    if player_hp_count > 0 || enemy_hp_count > 0 {
-        msg.channel_id
-            .send_message(&ctx.http, |f| {
-                f.embed(|e| {
-                    e.title(format!(
-                        "結果は{}ダメージでした",
-                        player_hp_count - damage.charabase.hp
-                    ))
-                    .description("特記事項はなし！")
-                })
-            })
-            .await
-            .context("埋め込みの作成に失敗しました")?;
-        Ok(BattleState::BattleContinue)
-    } else if player_hp_count <= 0 {
-        msg.channel_id
-            .send_message(&ctx.http, |f| {
-                f.embed(|e| e.title(format!("{}に倒されてしまった", damage.charabase.name)))
-            })
-            .await
-            .context("埋め込みの作成に失敗しました")?;
-        Ok(BattleState::PlayerDown)
-    } else if enemy_hp_count <= 0 {
-        msg.channel_id
-            .send_message(&ctx.http, |f| {
-                f.embed(|e| e.title(format!("{}を倒した", damage.charabase.name)))
-            })
-            .await
-            .context("埋め込みの作成に失敗しました")?;
-        Ok(BattleState::EnemyDown)
-    } else {
-        Err(anyhow::anyhow!("何かの不具合が発生しました"))
-    }
-}*/
 
 async fn guard_attack(
     ctx: &serenity::client::Context,
@@ -384,11 +411,4 @@ async fn error_embed_message<M: Into<String>>(
         })
         .await
         .context("埋め込みの作成に失敗しました")
-}
-
-/// Battle State
-pub enum BattleState {
-    BattleContinue,
-    PlayerDown,
-    EnemyDown,
 }

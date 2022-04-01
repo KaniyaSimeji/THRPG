@@ -5,7 +5,6 @@ use crate::battle::{
 };
 use chrono::prelude::{Local, NaiveDateTime};
 use rand::prelude::IteratorRandom;
-use std::path::Path;
 use uuid::Uuid;
 
 /// Structure for making battles from fragmentary information
@@ -20,25 +19,21 @@ pub struct BattleBuilder {
 }
 
 /// Settings for randomly selecting a character
-pub struct RandomOption<'a, T: AsRef<Path>> {
+pub struct RandomOption {
     /// Whether the values of `player` and` enemy` may be the same
     pub allow_same_chara: bool,
-    pub toml_dir_path: &'a T,
+    pub toml_dir_path: std::path::PathBuf,
     pub exclude_charas: Option<Vec<String>>,
 }
 
-impl<T> Default for RandomOption<'_, T>
-where
-    str: AsRef<T>,
-    T: AsRef<Path>,
-{
+impl Default for RandomOption {
     /// Default value
     /// `toml_dir_path`:`chara/`
     /// `exclude_charas`: `None`
-    /// `allow_same_chara`: `false`
+    /// `allow_same_chara`: `true`
     fn default() -> Self {
         Self {
-            toml_dir_path: "chara".as_ref(),
+            toml_dir_path: std::path::Path::new("chara").to_path_buf(),
             exclude_charas: None,
             allow_same_chara: true,
         }
@@ -122,10 +117,7 @@ impl BattleBuilder {
     }
 
     /// Randomly choose the enemy
-    pub async fn enemy_random<T>(&mut self, random_options: RandomOption<'_, T>) -> &mut Self
-    where
-        T: AsRef<Path>,
-    {
+    pub async fn enemy_random(&mut self, random_options: RandomOption) -> &mut Self {
         let charas = dir_files(random_options.toml_dir_path).await.unwrap();
         let mut rng = rand::thread_rng();
         let mut chara = None;
@@ -158,6 +150,7 @@ impl BattleBuilder {
     /// build BattleData
     pub fn build(self) -> BattleData {
         BattleData::new(
+            self.uuid,
             self.player.unwrap(),
             self.enemy.unwrap(),
             self.mode,

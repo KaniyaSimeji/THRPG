@@ -9,11 +9,11 @@ pub struct CharaConfig {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CharaBase {
     pub name: String,
-    pub power: u8,
-    pub guard: u8,
-    pub speed: u8,
-    pub hp: u8,
-    pub mp: u8,
+    pub power: i16,
+    pub guard: i16,
+    pub speed: i16,
+    pub hp: i16,
+    pub mp: i16,
 }
 
 #[derive(Deserialize, PartialEq, PartialOrd, Debug, Clone)]
@@ -38,6 +38,8 @@ pub struct CharaMeta {
     pub species_description: Option<String>,
     pub get_exp: u32,
     pub skill_type: SkillType,
+    pub own_exp: Option<i64>,
+    pub own_level: Option<i64>,
 }
 
 #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]

@@ -16,4 +16,4 @@ levelup_exp = "Normal"
 species_type = "Human"
 species_description = "巫女"
 get_exp = 100
-skill_type = "Lucky"
+skill_type = "Effort"

@@ -10,16 +10,18 @@ tokio = { version = "1.15.0", features = ["full"] }
 regex = "1.5"
 axum="0.4"
 toml = "0.5.8"
-serde = { version = "1.0.135", features = ["derive"] }
-serde-redis="0.12.0"
-rand = { version="0.8.4", features=["std_rng","std"]}
-anyhow = "1.0.53"
-thiserror = "1.0.30"
-once_cell = "1.9.0"
-tracing = "0.1.29"
-uuid = { version="0.8.0", features=["v4"]}
-url = "2.2.2"
+serde = { version = "1.0", features = ["derive"] }
+rand = { version="0.8", features=["std_rng","std"]}
+anyhow = "1.0"
+thiserror = "1.0"
+once_cell = "1.9"
+tracing = "0.1"
+uuid = { version="0.8", features=["v4"]}
+url = "2.2"
+semver = "1.0"
 chrono = "0.4"
+wasmer = "2.2"
+combine = "4.6"
 [dependencies.serenity]
 default-features = false
 features = [
@@ -35,16 +37,16 @@ features = [
     "rustls_backend",
     "cache"
 ]
-version = "0.10.10"
+version = "0.10"
 [dependencies.redis]
-version = "0.21.5"
+version = "0.21"
 features = [
     "aio",
     "tokio-comp",
     "tokio-native-tls-comp"
 ]
 [dependencies.sea-orm]
-version = "0.5.0"
+version = "0.6"
 features = [
     "sqlx-postgres",
     "runtime-tokio-rustls",

@@ -19,8 +19,6 @@ services:
 
   bot:
     build: .
-#    environment:
-#      - RUST_BACKTRACE=1
     command: ./bot
     restart: always
     depends_on:

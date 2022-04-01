@@ -1,3 +1,4 @@
+use crate::battle::model::CharaConfig;
 use sea_orm::{entity::prelude::*, DeriveEntityModel};
 use uuid::Uuid;
 //
@@ -34,6 +35,15 @@ impl Related<Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl From<Model> for CharaConfig {
+    fn from(from: Model) -> CharaConfig {
+        let mut frame = CharaConfig::chara_new_noasync(&from.player).unwrap();
+        frame.meta.own_exp = Some(from.exp);
+        frame.meta.own_level = Some(from.level);
+        frame
+    }
+}
 
 //
 // Save program
