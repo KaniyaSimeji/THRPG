@@ -1,19 +1,18 @@
 [charabase]
 name = "霧雨魔理沙"
-power = 100
-guard = 100
-speed = 100
+power = 110
+guard = 90
+speed = 110
 hp = 100
 mp = 100
 
 [[attack]]
-name = "夢想封印"
-damage = 70
+name = "マスタースパーク"
+damage = 90
 hit_rate = 0.9
 
 [meta]
 levelup_exp = "Normal"
-species_type = "Human"
-species_description = "魔法使い"
+species_type = "Magician"
 get_exp = 100
 skill_type = "Effort"

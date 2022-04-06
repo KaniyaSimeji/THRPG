@@ -6,7 +6,7 @@ use serenity::{
     async_trait,
     client::{Context, EventHandler},
     framework::{
-        standard::{help_commands, Args, CommandGroup, CommandResult, HelpOptions},
+        standard::{help_commands, macros::help, Args, CommandGroup, CommandResult, HelpOptions},
         StandardFramework,
     },
     model::prelude::{Message, UserId},
@@ -53,7 +53,7 @@ async fn main() {
     }
 }
 
-#[serenity::framework::standard::macros::help]
+#[help]
 async fn help(
     context: &Context,
     msg: &Message,

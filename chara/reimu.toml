@@ -13,7 +13,6 @@ hit_rate = 0.9
 
 [meta]
 levelup_exp = "Normal"
-species_type = "Human"
-species_description = "巫女"
+species_type = "ShrineMaiden"
 get_exp = 100
 skill_type = "Effort"

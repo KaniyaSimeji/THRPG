@@ -5,8 +5,7 @@ use std::path::{Path, PathBuf};
 /// read file to toml
 fn read_to_toml<T: AsRef<Path>>(toml_path: T) -> anyhow::Result<CharaConfig> {
     let chara_data: CharaConfig = {
-        let file_content =
-            std::fs::read_to_string(toml_path).context("ファイルを読み込めませんでした")?;
+        let file_content = std::fs::read_to_string(toml_path).map_err(|e| anyhow::anyhow!(e))?;
 
         toml::from_str(file_content.as_str())
     }
@@ -23,7 +22,7 @@ pub(crate) async fn dir_files<T: AsRef<Path>>(
         let mut vec: Vec<PathBuf> = Vec::new();
         let mut entries = tokio::fs::read_dir(toml_dir_path)
             .await
-            .context("ディレクトリが読み込めません")?;
+            .map_err(|e| anyhow::anyhow!(e))?;
         while let Some(entry) = entries.next_entry().await? {
             let dir_entrey = entry.path();
 

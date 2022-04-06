@@ -224,15 +224,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bstr"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -632,15 +623,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "erased-serde"
-version = "0.3.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad132dd8d0d0b546348d7d86cb3191aad14b34e5f979781fc005c80d4ac67ffd"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -1157,24 +1139,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lua-src"
-version = "544.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7341ba039a781c4982ca20761c55f44e07bfefd496a45b1e929763d88f5fc68b"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "luajit-src"
-version = "210.3.3+resty673aaad"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3201eae65820ee1f1eddc22de04f5c834bce36db20c2672d39d47826b317768e"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "mach"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1283,27 +1247,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "mlua"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29e2194305aa8301d5da9c1c98640047f4219f6b95c190f6860338ab9872b686"
-dependencies = [
- "bstr",
- "cc",
- "erased-serde",
- "futures-core",
- "futures-task",
- "futures-util",
- "lua-src",
- "luajit-src",
- "num-traits",
- "once_cell",
- "pkg-config",
- "rustc-hash",
- "serde",
 ]
 
 [[package]]
@@ -2509,7 +2452,6 @@ dependencies = [
  "axum",
  "chrono",
  "combine",
- "mlua",
  "once_cell",
  "rand 0.8.5",
  "redis",
@@ -2517,6 +2459,7 @@ dependencies = [
  "sea-orm",
  "semver",
  "serde",
+ "serde_json",
  "serenity",
  "thiserror",
  "tokio",
@@ -2657,8 +2600,7 @@ dependencies = [
 [[package]]
 name = "toml"
 version = "0.5.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
+source = "git+https://github.com/umegaya/toml-rs.git?branch=umegaya/multiline-inline-table#93292f8dcabddabb70cee9cc3bd22064c5bd40f5"
 dependencies = [
  "serde",
 ]

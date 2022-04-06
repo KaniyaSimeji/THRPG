@@ -8,8 +8,8 @@ use uuid::Uuid;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub battle_uuid: Uuid,
-    pub player_name: String,
-    pub enemy_name: String,
+    pub player: serde_json::Value,
+    pub enemy: serde_json::Value,
     pub elapesd_turns: u32,
     pub start_time: NaiveDateTime,
     pub play_mode: String,
@@ -40,8 +40,16 @@ impl From<Model> for BattleBuilder {
     fn from(from: Model) -> BattleBuilder {
         BattleBuilder::new(
             PlayMode::try_from_value(&from.play_mode).unwrap(),
-            Some(CharaConfig::chara_new_noasync(&from.player_name).unwrap()),
-            Some(CharaConfig::chara_new_noasync(&from.enemy_name).unwrap()),
+            // base type is CharaConfig
+            Some(
+                CharaConfig::chara_new_noasync(&from.player["charabase"]["name"].as_str().unwrap())
+                    .unwrap(),
+            ),
+            // base type is CharaConfig
+            Some(
+                CharaConfig::chara_new_noasync(&from.enemy["charabase"]["name"].as_str().unwrap())
+                    .unwrap(),
+            ),
             Some(from.elapesd_turns),
         )
     }

@@ -2,15 +2,25 @@
 name = "thrpg"
 version = "0.1.0"
 edition = "2021"
-
+authors=["KaniyaSimeji"]
+license="MIT OR Apache-2.0"
+keywords=["discord", "bot", "game"]
+categories=["games"]
+description="Touhou Project's secondary creative games"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default=["full"]
+full = []
+
 [dependencies]
-tokio = { version = "1.15.0", features = ["full"] }
+tokio = { version = "1.15", features = ["full"] }
 regex = "1.5"
 axum="0.4"
-toml = "0.5.8"
+# Since the main toml-rs is in maintenance mode, we will use this fork that supports multi-line
+toml = { git="https://github.com/umegaya/toml-rs.git", branch = "umegaya/multiline-inline-table"}
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
 rand = { version="0.8", features=["std_rng","std"]}
 anyhow = "1.0"
 thiserror = "1.0"
@@ -53,12 +63,4 @@ features = [
     "macros"
 ]
 default-features = false
-[dependencies.mlua]
-version = "0.7"
-features = [
-	"luajit52",
-	"async",
-	"serialize",
-	"vendored",
-	"send"
-]
+

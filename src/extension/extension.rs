@@ -63,6 +63,16 @@ pub struct ExtensionClientSetting {
     authority: AuthorityTypes,
 }
 
+impl ExtensionClientSetting {
+    pub fn config(&self) -> &ExtensionConfig {
+        &self.config
+    }
+
+    pub fn authority(&self) -> &AuthorityTypes {
+        &self.authority
+    }
+}
+
 /// Privileges granted to extensions
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum AuthorityTypes {

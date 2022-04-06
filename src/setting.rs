@@ -1,10 +1,8 @@
 pub mod setup {
-    use once_cell::sync::Lazy;
     use serde::{Deserialize, Serialize};
     use std::path::PathBuf;
 
-    static NULL_ADDRESS: Lazy<String> = Lazy::new(|| "null.address".to_string());
-
+    pub const NULL_ADDRESS: &str = "null.address";
     /// THRPG.toml params
     #[derive(Deserialize, Serialize)]
     pub struct Config {
@@ -36,12 +34,12 @@ pub mod setup {
 
     #[derive(Deserialize, Serialize)]
     pub struct BOTInfo {
-        name: String,
-        author: String,
-        version: String,
-        website: String,
-        repository: String,
-        license: String,
+        pub name: String,
+        pub author: String,
+        pub version: String,
+        pub website: String,
+        pub repository: String,
+        pub license: String,
     }
 
     impl BOTInfo {
@@ -67,7 +65,7 @@ pub mod setup {
 
     /// format is {uuid}.null.address
     pub fn address_random() -> String {
-        let url_string = format!("{}.{}", uuid::Uuid::new_v4(), *NULL_ADDRESS);
+        let url_string = format!("{}.{}", uuid::Uuid::new_v4(), NULL_ADDRESS.to_string());
         url::Url::parse(&url_string).unwrap().into()
     }
 

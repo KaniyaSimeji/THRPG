@@ -38,9 +38,14 @@ impl ActiveModelBehavior for ActiveModel {}
 
 impl From<Model> for CharaConfig {
     fn from(from: Model) -> CharaConfig {
-        let mut frame = CharaConfig::chara_new_noasync(&from.player).unwrap();
-        frame.meta.own_exp = Some(from.exp);
-        frame.meta.own_level = Some(from.level);
+        let frame = CharaConfig::chara_new_noasync(&from.player).unwrap();
+        frame
+    }
+}
+
+impl From<&Model> for CharaConfig {
+    fn from(from: &Model) -> CharaConfig {
+        let frame = CharaConfig::chara_new_noasync(&from.player).unwrap();
         frame
     }
 }
@@ -92,9 +97,21 @@ pub async fn update_player(db: &DbConn, user_id: u64, player: String) {
         .await
         .unwrap();
 
-    let mut active_userdata: ActiveModel = userdata.unwrap().into();
+    if let Some(data) = userdata {
+        let mut active_userdata: ActiveModel = data.into();
 
-    active_userdata.player = sea_orm::entity::Set(player);
+        active_userdata.player = sea_orm::entity::Set(player);
 
-    active_userdata.update(db).await.unwrap();
+        active_userdata.update(db).await.unwrap();
+    } else {
+        let active_model: ActiveModel = Model {
+            user_id: user_id.to_string(),
+            player,
+            level: 0,
+            exp: 0,
+            battle_uuid: None,
+        }
+        .into();
+        active_model.insert(db).await.unwrap();
+    }
 }

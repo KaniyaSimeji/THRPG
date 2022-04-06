@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Deserialize, Debug, Clone, PartialEq, PartialOrd, Serialize)]
 pub struct CharaConfig {
     pub charabase: CharaBase,
     pub attack: Vec<CharaAttack>,
@@ -16,7 +16,7 @@ pub struct CharaBase {
     pub mp: i16,
 }
 
-#[derive(Deserialize, PartialEq, PartialOrd, Debug, Clone)]
+#[derive(Deserialize, Serialize, PartialEq, PartialOrd, Debug, Clone)]
 pub struct CharaAttack {
     pub name: String,
     pub damage: u32,
@@ -24,45 +24,47 @@ pub struct CharaAttack {
     pub abnormal_state: Option<AbnormalState>,
 }
 
-#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum AbnormalState {
     Slowed,
     Poisoned,
     Unlucky,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CharaMeta {
     pub levelup_exp: LevelupExpType,
     pub species_type: SpeciesType,
-    pub species_description: Option<String>,
     pub get_exp: u32,
     pub skill_type: SkillType,
-    pub own_exp: Option<i64>,
-    pub own_level: Option<i64>,
 }
 
-#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub enum LevelupExpType {
     Early,
     Normal,
     Late,
 }
 
-#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub enum SpeciesType {
-    #[deprecated(note = "Minimal use as it is too abstracted!  \
-        Please select a specific race")]
-    Human,
-    #[deprecated(note = "Minimal use as it is too abstracted!  \
-        Please select a specific race")]
-    Yokai,
-    Maiden,
+    /// Try to use as detailed an element as possible
+    /// It is preferable to use it when you add a character in the extension
+    Human {
+        description: String,
+    },
+    /// Try to use as detailed an element as possible
+    /// It is preferable to use it when you add a character in the extension
+    Yokai {
+        description: String,
+    },
+    ShrineMaiden,
     YokaiWhoManipulatesDarkness,
     YokaiWhoUsageOfQi,
     Fairy,
     Magician,
     Witch,
+    Maid,
     Vampire,
     Yukionna,
     Shikigami,
@@ -118,13 +120,13 @@ pub enum SpeciesType {
     Oomukade,
 }
 
-#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum SkillType {
-    Lucky(LuckyLevel),
+    Lucky { level: LuckyLevel },
     Effort,
 }
 
-#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
+#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Serialize)]
 pub enum LuckyLevel {
     LuckyOne,
     LuckyTwo,

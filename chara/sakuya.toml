@@ -1,19 +1,18 @@
 [charabase]
 name = "十六夜咲夜"
-power = 100
+power = 105
 guard = 100
-speed = 100
+speed = 115
 hp = 100
 mp = 100
 
 [[attack]]
-name = "夢想封印"
-damage = 70
+name = "殺人ドール"
+damage = 80
 hit_rate = 0.9
 
 [meta]
 levelup_exp = "Normal"
-species_type = "Human"
-species_description = "メイド長"
+species_type = "Maid"
 get_exp = 100
 skill_type = "Effort"
