@@ -10,7 +10,12 @@ pub struct ExtensionConfig {
     extension_version: String,
     extension_license: Option<String>,
     extension_docs_url: Option<String>,
+    extension_website: Option<String>,
+    extension_repository: Option<String>,
+    extension_story_origin: Option<String>,
     extension_author_url: Option<String>,
+    extension_description: String,
+    extension_readme: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

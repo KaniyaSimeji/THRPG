@@ -6,7 +6,7 @@ use crate::battle::{
 use crate::database::{
     playdata::Entity as PlaydataEntity,
     postgres_connect,
-    save::{delete as userdata_delete, save, update_player, Entity as UserDataEntity},
+    save::{delete as userdata_delete, save, update_player, Entity as UserDataEntity, Model},
 };
 use crate::setting::{
     i18n::i18n_text,
@@ -58,10 +58,24 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                 let db_conn = postgres_connect::connect(db_address)
                     .await
                     .map_err(|e| anyhow::anyhow!(e))?;
-                UserDataEntity::find_by_id(msg.author.id.as_u64().to_string())
+                match UserDataEntity::find_by_id(msg.author.id.as_u64().to_string())
                     .one(&db_conn)
                     .await
                     .map_err(|e| anyhow::anyhow!(e))?
+                {
+                    Some(ud) => Some(ud),
+                    None => {
+                        let model = Model {
+                            exp: 1,
+                            level: 1,
+                            player: "Reimu".to_string(),
+                            user_id: msg.author.id.as_u64().to_string(),
+                            battle_uuid: None,
+                        };
+                        save(&db_conn, model.clone()).await;
+                        Some(model)
+                    }
+                }
             }
             None => None,
         };
@@ -115,9 +129,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                     None,
                 );
 
-                init.player(CharaConfig::chara_new("Reimu").await?)
-                    .enemy_random(RandomOption::default())
-                    .await;
+                init.enemy_random(RandomOption::default()).await;
 
                 init.build()
             }
@@ -207,7 +219,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
 
                                 save(
                                     &dbconn,
-                                    crate::database::save::Model {
+                                    Model {
                                         user_id: msg.author.id.0.to_string(),
                                         exp: match userdata.as_ref() {
                                             Some(e) => e.exp,

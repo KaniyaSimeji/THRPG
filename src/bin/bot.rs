@@ -1,5 +1,6 @@
 use std::collections::HashSet;
-use thrpg::command::{author::RELATION_GROUP, play::GENERAL_GROUP};
+use thrpg::command::{infos::RELATION_GROUP, play::GENERAL_GROUP};
+use thrpg::extension::wasm::wasm_init;
 use thrpg::setting::setup;
 
 use serenity::{
@@ -30,6 +31,9 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    if let Err(why) = wasm_init().await {
+        println!("{:?}", why)
+    };
     let prefix = setup::config_parse_toml()
         .await
         .prefix()

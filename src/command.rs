@@ -1,2 +1,2 @@
-pub mod author;
+pub mod infos;
 pub mod play;

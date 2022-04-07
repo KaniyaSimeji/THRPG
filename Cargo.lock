@@ -2468,6 +2468,8 @@ dependencies = [
  "url",
  "uuid",
  "wasmer",
+ "wasmer-compiler-cranelift",
+ "wasmer-engine-universal",
 ]
 
 [[package]]

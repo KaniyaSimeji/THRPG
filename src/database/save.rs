@@ -107,8 +107,8 @@ pub async fn update_player(db: &DbConn, user_id: u64, player: String) {
         let active_model: ActiveModel = Model {
             user_id: user_id.to_string(),
             player,
-            level: 0,
-            exp: 0,
+            level: 1,
+            exp: 1,
             battle_uuid: None,
         }
         .into();

@@ -31,6 +31,8 @@ url = "2.2"
 semver = "1.0"
 chrono = "0.4"
 wasmer = "2.2"
+wasmer-compiler-cranelift="2.2"
+wasmer-engine-universal="2.2"
 combine = "4.6"
 [dependencies.serenity]
 default-features = false
