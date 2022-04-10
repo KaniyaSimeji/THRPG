@@ -1,4 +1,4 @@
-use crate::battle::model::{CharaConfig, LuckyLevel};
+use crate::battle::model::{CharaConfig, LevelupExpType, LuckyLevel, SkillType};
 use crate::battle::utils::{dir_files, dir_files_noasync};
 use crate::database::playdata::Model;
 use anyhow::Context;
@@ -83,6 +83,27 @@ impl CharaConfig {
                 .find(|f| f.charabase.name == "霧雨魔理沙")
                 .context("Not found")?;
             Ok(marisa_data)
+        } else if &name_arg == &"博麗霊夢" {
+            let chara_datas = dir_files_noasync("chara").unwrap();
+            let reimu_data = chara_datas
+                .into_iter()
+                .find(|f| f.charabase.name == "博麗霊夢")
+                .context("Not found")?;
+            Ok(reimu_data)
+        } else if &name_arg == &"十六夜咲夜" {
+            let chara_datas = dir_files_noasync("chara").unwrap();
+            let sakuya_data = chara_datas
+                .into_iter()
+                .find(|f| f.charabase.name == "十六夜咲夜")
+                .context("Not found")?;
+            Ok(sakuya_data)
+        } else if &name_arg == &"霧雨魔理沙" {
+            let chara_datas = dir_files_noasync("chara").unwrap();
+            let marisa_data = chara_datas
+                .into_iter()
+                .find(|f| f.charabase.name == "霧雨魔理沙")
+                .context("Not found")?;
+            Ok(marisa_data)
         } else {
             Err(anyhow::anyhow!("No match regex {:?}", &name_arg))
         }
@@ -153,22 +174,13 @@ impl LuckyLevel {
         }
     }
 }
-
-/// Amount of exp earned in battle
-/// Exp = 18 + (Enemy level*2 - my level) * {enemy appear}th boss (* lucky_number)
-///
-pub fn math_exp(
-    enemy_level: u32,
-    player_level: u32,
-    enemy_appear: u8,
-    lucky_level: Option<LuckyLevel>,
-) -> f32 {
-    let mut base_exp = (18 + (enemy_level * 2 - player_level) * enemy_appear as u32) as f32;
-    if let Some(l) = lucky_level {
-        base_exp *= l.lucky_number()
+impl SkillType {
+    pub fn lucky_level(&self) -> Option<&LuckyLevel> {
+        match self {
+            Self::Lucky { level: l } => Some(l),
+            _ => None,
+        }
     }
-
-    base_exp as f32
 }
 
 impl BattleData {
@@ -323,6 +335,57 @@ impl BattleData {
             self.guard_enemy_damage()
         };
         guard
+    }
+
+    /// Amount of exp earned in battle
+    ///
+    pub fn calculate_exp(&self, enemy_level: u32, player_level: u32) -> u32 {
+        let enemy_level_exponentiation = |mut x: u32| {
+            let mut num = 0;
+            while x == 0 {
+                num += x * x;
+                x -= 1;
+            }
+            num
+        };
+
+        let mut base_exp = (self.enemy_data.meta.get_exp
+            + rand::random::<u8>() as u32
+            + (enemy_level_exponentiation(enemy_level) - player_level * enemy_level))
+            as f32;
+
+        if matches!(
+            self.player_data.meta.skill_type,
+            SkillType::Lucky { level: _ }
+        ) {
+            base_exp *= if let Some(l) = self.player_data.meta.skill_type.lucky_level() {
+                l.lucky_number()
+            } else {
+                base_exp
+            }
+        }
+
+        base_exp as u32
+    }
+
+    /// Need to up the level exp
+    pub fn calculate_level(&self, level: u32) -> u32 {
+        let need_to_exp = |mut level: u32| {
+            let mut num = 0;
+            while level == 0 {
+                num += level * level;
+                level -= 1;
+            }
+            num
+        };
+
+        match &self.player_data.meta.levelup_exp {
+            LevelupExpType::Early => {
+                todo!()
+            }
+            LevelupExpType::Normal => need_to_exp(level),
+            LevelupExpType::Late => todo!(),
+        }
     }
 }
 
