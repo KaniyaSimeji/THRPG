@@ -1,4 +1,4 @@
-use crate::battle::model::{CharaConfig, LevelupExpType, LuckyLevel, SkillType};
+use crate::battle::model::{CharaBase, CharaConfig, LevelupExpType, LuckyLevel, SkillType};
 use crate::battle::utils::{dir_files, dir_files_noasync};
 use crate::database::playdata::Model;
 use anyhow::Context;
@@ -368,23 +368,69 @@ impl BattleData {
         base_exp as u32
     }
 
+    /// Find the player level from exp
+    pub fn calculate_player_level(&self, exp: f64) -> f64 {
+        match &self.player_data.meta.levelup_exp {
+            LevelupExpType::Early => exp.cbrt().abs(),
+            LevelupExpType::Normal => exp.cbrt().abs(),
+            LevelupExpType::Late => exp.cbrt().abs(),
+        }
+    }
+
+    /// Find the enemy level from exp
+    pub fn calculate_enemy_level(&self, exp: f64) -> f64 {
+        match &self.enemy_data.meta.levelup_exp {
+            LevelupExpType::Early => exp.cbrt().abs(),
+            LevelupExpType::Normal => exp.cbrt().abs(),
+            LevelupExpType::Late => exp.cbrt().abs(),
+        }
+    }
+
     /// Need to up the level exp
-    pub fn calculate_level(&self, level: u32) -> u32 {
-        let need_to_exp = |mut level: u32| {
-            let mut num = 0;
-            while level == 0 {
-                num += level * level;
-                level -= 1;
-            }
-            num
-        };
+    pub fn calculate_need_level(&self, level: u32) -> u32 {
+        let power_of_three = |level: u32| level * level * level;
 
         match &self.player_data.meta.levelup_exp {
             LevelupExpType::Early => {
-                todo!()
+                if level <= 35 {
+                    power_of_three(level) - level * (level * 3)
+                } else if level <= 70 {
+                    power_of_three(level)
+                } else {
+                    power_of_three(level) + level * (level * 3)
+                }
             }
-            LevelupExpType::Normal => need_to_exp(level),
-            LevelupExpType::Late => todo!(),
+            LevelupExpType::Normal => power_of_three(level),
+            LevelupExpType::Late => {
+                if level <= 30 {
+                    power_of_three(level) + level * (level * 3)
+                } else if level <= 65 {
+                    power_of_three(level)
+                } else {
+                    power_of_three(level) - level * (level * 3)
+                }
+            }
+        }
+    }
+
+    pub fn status_up(&mut self, charatype: StatusCharaType) -> &mut Self {
+        match charatype {
+            StatusCharaType::Enemy => {
+                self.enemy_data.charabase.hp += 2;
+                self.enemy_data.charabase.power += 2;
+                self.enemy_data.charabase.guard += 2;
+                self.enemy_data.charabase.speed += 2;
+                self.enemy_data.charabase.mp += 2;
+                self
+            }
+            StatusCharaType::Player => {
+                self.player_data.charabase.hp += 2;
+                self.player_data.charabase.power += 2;
+                self.player_data.charabase.guard += 2;
+                self.player_data.charabase.speed += 2;
+                self.player_data.charabase.mp += 2;
+                self
+            }
         }
     }
 }
@@ -403,9 +449,8 @@ impl From<BattleData> for Model {
         }
     }
 }
-/// Battle State
-pub enum BattleState {
-    BattleContinue,
-    PlayerDown,
-    EnemyDown,
+
+pub enum StatusCharaType {
+    Enemy,
+    Player,
 }

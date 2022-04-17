@@ -147,6 +147,36 @@ impl BattleBuilder {
         self
     }
 
+    pub fn player_status_setting(&mut self, level: i16) -> &mut Self {
+        match self.player.clone() {
+            Some(mut p) => {
+                p.charabase.power += 2 * level;
+                p.charabase.guard += 2 * level;
+                p.charabase.speed += 2 * level;
+                p.charabase.mp += 2 * level;
+                p.charabase.hp += 2 * level;
+                self.player = Some(p);
+                self
+            }
+            None => self,
+        }
+    }
+
+    pub fn enemy_status_setting(&mut self, level: i16) -> &mut Self {
+        match self.enemy.clone() {
+            Some(mut p) => {
+                p.charabase.power += 2 * level;
+                p.charabase.guard += 2 * level;
+                p.charabase.speed += 2 * level;
+                p.charabase.mp += 2 * level;
+                p.charabase.hp += 2 * level;
+                self.player = Some(p);
+                self
+            }
+            None => self,
+        }
+    }
+
     /// build BattleData
     pub fn build(self) -> BattleData {
         BattleData::new(

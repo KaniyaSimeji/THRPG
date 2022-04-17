@@ -102,7 +102,9 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
 
         let mut battle = match playdata {
             Some(d) => {
-                let builder: BattleBuilder = d.into();
+                let mut builder: BattleBuilder = d.into();
+                builder.player_status_setting(userdata.as_ref().unwrap().level as i16);
+                builder.enemy_status_setting(userdata.as_ref().unwrap().level as i16);
                 builder.build()
             }
             None => {
@@ -130,6 +132,7 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                 );
 
                 init.enemy_random(RandomOption::default()).await;
+                init.player_status_setting(1).enemy_status_setting(1);
 
                 init.build()
             }
@@ -192,6 +195,54 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                                     .await
                                     .context("埋め込みの作成に失敗しました")?;
                                 battle.reset_turn();
+                                match config_parse_toml().await.postgresql_config() {
+                                    Some(url) => {
+                                        let url_string = url.db_address.unwrap();
+                                        let dbconn = postgres_connect::connect(url_string)
+                                            .await
+                                            .expect("Invelid URL");
+
+                                        let player_level = battle.calculate_player_level(
+                                            match userdata.as_ref() {
+                                                Some(e) => {
+                                                    e.exp as f64
+                                                        + battle.enemy().meta.get_exp as f64
+                                                }
+                                                None => battle.enemy().meta.get_exp as f64,
+                                            },
+                                        );
+                                        save(
+                                            &dbconn,
+                                            Model {
+                                                user_id: msg.author.id.0.to_string(),
+                                                exp: match userdata.as_ref() {
+                                                    Some(e) => {
+                                                        e.exp as i64
+                                                            + battle.enemy().meta.get_exp as i64
+                                                    }
+                                                    None => battle.enemy().meta.get_exp as i64,
+                                                },
+                                                level: player_level as i64,
+                                                player: match userdata.as_ref() {
+                                                    Some(p) => p.player.clone(),
+                                                    None => "Reimu".to_string(),
+                                                },
+                                                battle_uuid: Some(battle.uuid()),
+                                            },
+                                        )
+                                        .await;
+                                    }
+                                    None => {
+                                        error_embed_message(
+                                            ctx,
+                                            msg,
+                                            "データベースに接続できません",
+                                        )
+                                        .await
+                                        .unwrap();
+                                        break;
+                                    }
+                                }
                                 break;
                             } else {
                                 break;
@@ -216,19 +267,24 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                                 let dbconn = postgres_connect::connect(url_string)
                                     .await
                                     .expect("Invelid URL");
-
+                                let player_level =
+                                    battle.calculate_player_level(match userdata.as_ref() {
+                                        Some(e) => {
+                                            e.exp as f64 + battle.enemy().meta.get_exp as f64
+                                        }
+                                        None => battle.enemy().meta.get_exp as f64,
+                                    });
                                 save(
                                     &dbconn,
                                     Model {
                                         user_id: msg.author.id.0.to_string(),
                                         exp: match userdata.as_ref() {
-                                            Some(e) => e.exp,
-                                            None => 1,
+                                            Some(e) => {
+                                                e.exp as i64 + battle.enemy().meta.get_exp as i64
+                                            }
+                                            None => battle.enemy().meta.get_exp as i64,
                                         },
-                                        level: match userdata.as_ref() {
-                                            Some(l) => l.level,
-                                            None => 1,
-                                        },
+                                        level: player_level as i64,
                                         player: match userdata.as_ref() {
                                             Some(p) => p.player.clone(),
                                             None => "Reimu".to_string(),
@@ -356,19 +412,24 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
                                 let dbconn = postgres_connect::connect(url_string)
                                     .await
                                     .expect("Invelid URL");
-
+                                let player_level =
+                                    battle.calculate_player_level(match userdata.as_ref() {
+                                        Some(e) => {
+                                            e.exp as f64 + battle.enemy().meta.get_exp as f64
+                                        }
+                                        None => battle.enemy().meta.get_exp as f64,
+                                    });
                                 save(
                                     &dbconn,
-                                    crate::database::save::Model {
+                                    Model {
                                         user_id: msg.author.id.0.to_string(),
                                         exp: match userdata.as_ref() {
-                                            Some(e) => e.exp,
-                                            None => 1,
+                                            Some(e) => {
+                                                e.exp as i64 + battle.enemy().meta.get_exp as i64
+                                            }
+                                            None => battle.enemy().meta.get_exp as i64,
                                         },
-                                        level: match userdata.as_ref() {
-                                            Some(l) => l.level,
-                                            None => 1,
-                                        },
+                                        level: player_level as i64,
                                         player: match userdata.as_ref() {
                                             Some(p) => p.player.clone(),
                                             None => "Reimu".to_string(),
