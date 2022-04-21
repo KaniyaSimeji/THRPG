@@ -1,0 +1,10 @@
+extension_type = "NewFeatures"
+extension_name = "Sample"
+extension_author = ["KaniyaSimeji"]
+extension_version = "0.1.0"
+extension_license = "MIT OR Apache-2.0"
+extension_docs_url = "https://github.com/thrpg/thrpg"
+extension_website = " https://github.com/thrpg/thrpg"
+extension_repository = "https://github.com/thrpg/thrpg"
+extension_description = "Sample addon"
+extension_readme = "readme.md"
