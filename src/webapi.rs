@@ -13,7 +13,7 @@ pub async fn bot_info() -> response::Json<BOTInfo> {
 pub async fn owner() -> response::Json<model::OwnerInfo> {
     let user = serenity::model::id::UserId::from(config_parse_toml().await.manager_id());
     let token = config_parse_toml().await.token();
-    let http = serenity::http::client::Http::new_with_token(&token);
+    let http = serenity::http::client::Http::new(&token);
     response::Json(model::OwnerInfo {
         name: user.to_user(http).await.unwrap().name,
     })
