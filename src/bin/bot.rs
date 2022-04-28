@@ -10,7 +10,10 @@ use serenity::{
         standard::{help_commands, macros::help, Args, CommandGroup, CommandResult, HelpOptions},
         StandardFramework,
     },
-    model::prelude::{Message, UserId},
+    model::{
+        gateway::GatewayIntents,
+        prelude::{Message, UserId},
+    },
     Client,
 };
 
@@ -46,7 +49,7 @@ async fn main() {
 
     let discord_token = setup::config_parse_toml().await.token();
 
-    let mut client = Client::builder(&discord_token)
+    let mut client = Client::builder(&discord_token, GatewayIntents::all())
         .event_handler(Handler)
         .framework(framework)
         .await
