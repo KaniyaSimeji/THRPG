@@ -16,6 +16,12 @@ pub enum PlayMode {
     Story { id: String },
 }
 
+impl ToString for PlayMode {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
 impl PlayMode {
     pub fn try_from_value(value: &str) -> anyhow::Result<Self> {
         match value {
