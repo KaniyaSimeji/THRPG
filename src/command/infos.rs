@@ -1,20 +1,13 @@
 use crate::setting::setup::BOTInfo;
 use serenity::client::Context;
-use serenity::framework::standard::{
-    macros::{command, group},
-    CommandResult,
-};
-use serenity::model::prelude::Message;
+use serenity::framework::standard::CommandResult;
+use serenity::model::prelude::{ChannelId, User};
 
-#[group]
-#[commands(info)]
-pub struct Relation;
-
-#[command]
-pub async fn info(ctx: &Context, msg: &Message) -> CommandResult {
-    if !msg.author.bot {
-        msg.channel_id
-            .send_message(&ctx.http, |f| {
+pub async fn info(ctx: Context, channel_id: ChannelId, user: User) -> CommandResult {
+    if !user.bot {
+        tokio::spawn(
+        channel_id
+            .send_message(ctx.http, |f| {
                 f.embed(|e| {
                     let botinfo = BOTInfo::info();
                     e.title(format!(
@@ -27,7 +20,7 @@ pub async fn info(ctx: &Context, msg: &Message) -> CommandResult {
                     ))
                 })
             })
-            .await?;
+        ).await??;
     }
     Ok(())
 }

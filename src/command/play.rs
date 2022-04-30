@@ -19,6 +19,8 @@ use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::channel::ReactionType;
+use serenity::model::prelude::ChannelId;
+use serenity::model::user::User;
 use std::time::Duration;
 
 pub static BATTLE_REACTIONS: Lazy<Vec<ReactionType>> = Lazy::new(|| {
@@ -43,7 +45,7 @@ const BATTLE_SAVE: &str = "✒️";
 const BATTLE_GUARD: &str = "\u{1F6E1}";
 
 #[group]
-#[commands(play, delete, setchara)]
+#[commands(play, setchara)]
 pub struct General;
 
 /// play
@@ -529,11 +531,12 @@ pub async fn play(ctx: &serenity::client::Context, msg: &Message, args: Args) ->
     Ok(())
 }
 
-#[command]
-#[description = "セーブデータを削除する"]
-pub async fn delete(ctx: &serenity::client::Context, msg: &Message) -> CommandResult {
-    let question = msg
-        .channel_id
+pub async fn delete(
+    ctx: &serenity::client::Context,
+    channel_id: ChannelId,
+    user: User,
+) -> CommandResult {
+    let question = channel_id
         .send_message(&ctx.http, |f| {
             f.embed(|e| {
                 e.title("本当に削除してもよろしいでしょうか？")
@@ -549,7 +552,7 @@ pub async fn delete(ctx: &serenity::client::Context, msg: &Message) -> CommandRe
         .timeout(Duration::from_secs(
             config_parse_toml().await.timeout_duration().unwrap_or(10),
         ))
-        .author_id(msg.author.id)
+        .author_id(user.id.0)
         .await
     {
         let emoji = &reaction.as_inner_ref().emoji;
@@ -560,20 +563,20 @@ pub async fn delete(ctx: &serenity::client::Context, msg: &Message) -> CommandRe
                     let dbconn = postgres_connect::connect(url_string)
                         .await
                         .expect("Invelid URL");
-                    userdata_delete(&dbconn, *msg.author.id.as_u64()).await;
+                    userdata_delete(&dbconn, *user.id.as_u64()).await;
                 }
                 None => {
-                    error_embed_message(ctx, msg, "データベースに接続できません").await?;
+                    error_embed_message(ctx, &question, "データベースに接続できません").await?;
                 }
             },
             "❌" => {
-                msg.channel_id
+                channel_id
                     .send_message(&ctx.http, |f| f.embed(|e| e.title("削除を取り消します")))
                     .await
                     .context("埋め込みの作成に失敗しました")?;
             }
             _ => {
-                error_embed_message(ctx, msg, "正しい反応を選んで下さい").await?;
+                error_embed_message(ctx, &question, "正しい反応を選んで下さい").await?;
             }
         }
     }
