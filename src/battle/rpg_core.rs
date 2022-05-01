@@ -1,4 +1,4 @@
-use crate::battle::model::{CharaBase, CharaConfig, LevelupExpType, LuckyLevel, SkillType};
+use crate::battle::model::{CharaConfig, LevelupExpType, LuckyLevel, SkillType};
 use crate::battle::utils::{dir_files, dir_files_noasync};
 use crate::database::playdata::Model;
 use anyhow::Context;
