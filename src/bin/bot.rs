@@ -1,11 +1,13 @@
 use std::collections::HashSet;
-use thrpg::battle::rpg_core::PlayMode;
+use thrpg::battle::{builder::BattleBuilder, rpg_core::PlayMode};
 use thrpg::command::{
     infos::info,
-    play::{delete, GENERAL_GROUP},
+    play::{delete, play},
 };
+use thrpg::database::postgres_connect::connect;
 use thrpg::extension::wasm::wasm_init;
 use thrpg::setting::setup;
+use thrpg::setting::setup::Config;
 
 use serenity::{
     async_trait,
@@ -22,7 +24,9 @@ use serenity::{
     Client,
 };
 
-struct Handler;
+struct Handler {
+    config: Config,
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -31,7 +35,7 @@ impl EventHandler for Handler {
             setup::config_parse_toml()
                 .await
                 .prefix()
-                .unwrap_or("th!".to_string()),
+                .unwrap_or(&"th!".to_string()),
         ))
         .await;
 
@@ -118,6 +122,12 @@ impl EventHandler for Handler {
                                 .description("Content information")
                                 .kind(ApplicationCommandOptionType::String)
                         })
+                        .create_option(|option| {
+                            option
+                                .name("thrpg")
+                                .description("thrpg information")
+                                .kind(ApplicationCommandOptionType::String)
+                        })
                 })
         })
         .await
@@ -126,14 +136,30 @@ impl EventHandler for Handler {
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
-            let content = match command.data.name.as_str() {
-                "play" => todo!(),
+            match command.data.name.as_str() {
+                "play" => play(
+                    ctx,
+                    command.channel_id,
+                    command.user,
+                    connect(self.config.postgresql_config().db_address)
+                        .await
+                        .unwrap(),
+                )
+                .await
+                .unwrap(),
                 "info" => {
                     info(ctx, command.channel_id, command.user).await.unwrap();
                 }
-                "delete" => delete(&ctx, command.channel_id, command.user)
-                    .await
-                    .unwrap(),
+                "delete" => delete(
+                    &ctx,
+                    command.channel_id,
+                    command.user,
+                    connect(self.config.postgresql_config().db_address)
+                        .await
+                        .unwrap(),
+                )
+                .await
+                .unwrap(),
                 _ => todo!(),
             };
         }
@@ -142,22 +168,21 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    let config = setup::config_parse_toml().await;
     if let Err(why) = wasm_init().await {
         println!("{:?}", why)
     };
-    let prefix = setup::config_parse_toml()
-        .await
-        .prefix()
-        .unwrap_or("th!".to_string());
+
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix(prefix))
-        .help(&HELP)
-        .group(&GENERAL_GROUP);
+        .configure(|c| c.prefix(config.clone().prefix().unwrap_or(&"th!".to_string())))
+        .help(&HELP);
 
-    let discord_token = setup::config_parse_toml().await.token();
+    let handler = Handler {
+        config: config.clone(),
+    };
 
-    let mut client = Client::builder(&discord_token, GatewayIntents::all())
-        .event_handler(Handler)
+    let mut client = Client::builder(config.token(), GatewayIntents::all())
+        .event_handler(handler)
         .framework(framework)
         .await
         .expect("Error client");

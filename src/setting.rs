@@ -4,29 +4,29 @@ pub mod setup {
 
     pub const NULL_ADDRESS: &str = "null.address";
     /// THRPG.toml params
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     pub struct Config {
         token: String,
         prefix: Option<String>,
         server_address: Option<String>,
         redis_config: Option<RedisConfig>,
-        postgresql_config: Option<PostgresqlConfig>,
+        postgresql_config: PostgresqlConfig,
         manager_id: u64,
         language: Option<Languages>,
         timeout_duration: Option<u64>,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     pub struct RedisConfig {
         pub db_address: Option<String>,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     pub struct PostgresqlConfig {
-        pub db_address: Option<String>,
+        pub db_address: String,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     pub enum Languages {
         Japanese,
         English,
@@ -74,23 +74,23 @@ pub mod setup {
             self.token
         }
 
-        pub fn server_address(self) -> Option<String> {
-            self.server_address
+        pub fn server_address(&self) -> Option<&String> {
+            self.server_address.as_ref()
         }
-        pub fn redis_config(self) -> Option<RedisConfig> {
-            self.redis_config
+        pub fn redis_config(&self) -> Option<&RedisConfig> {
+            self.redis_config.as_ref()
         }
 
-        pub fn postgresql_config(self) -> Option<PostgresqlConfig> {
-            self.postgresql_config
+        pub fn postgresql_config(&self) -> PostgresqlConfig {
+            self.postgresql_config.clone()
         }
 
         pub fn manager_id(&self) -> u64 {
             self.manager_id
         }
 
-        pub fn prefix(self) -> Option<String> {
-            self.prefix
+        pub fn prefix(&self) -> Option<&String> {
+            self.prefix.as_ref()
         }
 
         pub fn check_server_address(self) -> anyhow::Result<String> {

@@ -53,65 +53,71 @@ impl From<&Model> for CharaConfig {
 //
 // Save program
 //
+impl Model {
+    pub async fn save(&self, db: &DbConn) -> &Self {
+        if let Some(userdata) = Entity::find_by_id(self.user_id.to_string())
+            .one(db)
+            .await
+            .unwrap()
+        {
+            let mut userdata_mut: ActiveModel = userdata.into();
+            userdata_mut.player = sea_orm::entity::Set(self.player.clone());
+            userdata_mut.level = sea_orm::entity::Set(self.level);
+            userdata_mut.exp = sea_orm::entity::Set(self.exp);
+            userdata_mut.battle_uuid = sea_orm::entity::Set(self.battle_uuid);
 
-pub async fn save(db: &DbConn, savedata: Model) {
-    let user_id_string = &savedata.user_id;
-    if let Some(userdata) = Entity::find_by_id(user_id_string.to_string())
-        .one(db)
-        .await
-        .unwrap()
-    {
-        let mut userdata_mut: ActiveModel = userdata.into();
-        userdata_mut.player = sea_orm::entity::Set(savedata.player);
-        userdata_mut.level = sea_orm::entity::Set(savedata.level);
-        userdata_mut.exp = sea_orm::entity::Set(savedata.exp);
-        userdata_mut.battle_uuid = sea_orm::entity::Set(savedata.battle_uuid);
+            userdata_mut.update(db).await.unwrap();
+            self
+        } else {
+            let new_data = ActiveModel {
+                user_id: sea_orm::ActiveValue::Set(self.user_id.clone()),
+                player: sea_orm::ActiveValue::Set(self.player.clone()),
+                level: sea_orm::ActiveValue::Set(self.level),
+                exp: sea_orm::ActiveValue::Set(self.exp),
+                battle_uuid: sea_orm::ActiveValue::Set(self.battle_uuid),
+            };
 
-        userdata_mut.update(db).await.unwrap();
-    } else {
-        let new_data = ActiveModel {
-            user_id: sea_orm::ActiveValue::Set(savedata.user_id),
-            player: sea_orm::ActiveValue::Set(savedata.player),
-            level: sea_orm::ActiveValue::Set(savedata.level),
-            exp: sea_orm::ActiveValue::Set(savedata.exp),
-            battle_uuid: sea_orm::ActiveValue::Set(savedata.battle_uuid),
-        };
-
-        new_data.insert(db).await.unwrap();
-    }
-}
-
-pub async fn delete(db: &DbConn, user_id: u64) {
-    if let Some(userdata) = Entity::find_by_id(user_id.to_string())
-        .one(db)
-        .await
-        .unwrap()
-    {
-        userdata.delete(db).await.unwrap();
-    }
-}
-
-pub async fn update_player(db: &DbConn, user_id: u64, player: String) {
-    let userdata: Option<Model> = Entity::find_by_id(user_id.to_string())
-        .one(db)
-        .await
-        .unwrap();
-
-    if let Some(data) = userdata {
-        let mut active_userdata: ActiveModel = data.into();
-
-        active_userdata.player = sea_orm::entity::Set(player);
-
-        active_userdata.update(db).await.unwrap();
-    } else {
-        let active_model: ActiveModel = Model {
-            user_id: user_id.to_string(),
-            player,
-            level: 1,
-            exp: 1,
-            battle_uuid: None,
+            new_data.insert(db).await.unwrap();
+            self
         }
-        .into();
-        active_model.insert(db).await.unwrap();
+    }
+
+    pub async fn delete(&self, db: &DbConn) {
+        if let Some(userdata) = Entity::find_by_id(self.user_id.clone())
+            .one(db)
+            .await
+            .unwrap()
+        {
+            userdata.delete(db).await.unwrap();
+        }
+    }
+
+    pub async fn update_player(&self, db: &DbConn) {
+        let userdata: Option<Model> = Entity::find_by_id(self.user_id.clone())
+            .one(db)
+            .await
+            .unwrap();
+
+        if let Some(data) = userdata {
+            let mut active_userdata: ActiveModel = data.into();
+
+            active_userdata.player = sea_orm::entity::Set(self.player.clone());
+
+            active_userdata.update(db).await.unwrap();
+        } else {
+            let active_model: ActiveModel = Model {
+                user_id: self.user_id.clone(),
+                player: self.player.clone(),
+                level: 1,
+                exp: 1,
+                battle_uuid: None,
+            }
+            .into();
+            active_model.insert(db).await.unwrap();
+        }
+    }
+
+    pub async fn get(db: &DbConn, user_id: String) -> Option<Self> {
+        Entity::find_by_id(user_id).one(db).await.unwrap()
     }
 }
