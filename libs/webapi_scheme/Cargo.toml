@@ -1,0 +1,22 @@
+[package]
+name = "webapi_scheme"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+axum="0.4"
+serde = { version = "1.0", features = ["derive"] }
+extension_config = { path="../extension_config" }
+setting_config = { path="../setting_config" }
+
+[dependencies.serenity]
+default-features = false
+features = [
+    "http",
+    "model",
+]
+version = "0.11"
+

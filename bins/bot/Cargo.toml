@@ -1,0 +1,32 @@
+[package]
+name = "bot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.15", features = ["full"] }
+wasmer="2.2"
+setting_config = { path= "../../libs/setting_config" }
+extension_wasm = { path="../../libs/extension_wasm" }
+battle_machine = { path="../../libs/battle_machine" }
+bot_command = { path="../../libs/bot_command" }
+thrpg_database = { path="../../libs/thrpg_database" }
+
+[dependencies.serenity]
+default-features = false
+features = [
+    "builder",
+    "collector",
+    "client",
+    "framework",
+    "gateway",
+    "http",
+    "model",
+    "standard_framework",
+    "utils",
+    "rustls_backend",
+    "cache"
+]
+version = "0.11"
