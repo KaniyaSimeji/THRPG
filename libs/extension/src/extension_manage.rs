@@ -22,6 +22,7 @@ bitflags! {
             const READ_MESSAGE = 0b00000011;
             const DELETE_MESSAGE = 0b00000101;
 
+
             const MESSAGE = Self::SEND_MESSAGE.bits | Self::READ_MESSAGE.bits | Self::DELETE_MESSAGE.bits;
     }
 }
