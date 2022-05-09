@@ -5,6 +5,7 @@ members = [
 	"libs/thrpg_log",
 	"libs/extension_wasm",
 	"libs/extension_config",
+	"libs/extension",
 	"libs/extension_api",
 	"libs/osf_parse",
 	"libs/setting_i18n",

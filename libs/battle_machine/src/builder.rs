@@ -46,7 +46,10 @@ impl Default for BattleBuilder {
         Self {
             datatime: Local::now().naive_local(),
             mode: PlayMode::Simple,
-            ..Default::default()
+            elapesd_turns: 0,
+            enemy: None,
+            player: None,
+            uuid: Uuid::new_v4(),
         }
     }
 }

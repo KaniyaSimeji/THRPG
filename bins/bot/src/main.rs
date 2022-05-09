@@ -3,10 +3,10 @@ use bot_command::{
     info::info,
     play::{delete, play},
 };
+use indexmap::IndexMap;
 use setting_config::Config;
 use std::collections::HashSet;
 use thrpg_database::postgres_connect::connect;
-use wasmer::Exports;
 
 use serenity::{
     async_trait,
@@ -25,7 +25,7 @@ use serenity::{
 
 struct Handler {
     config: Config,
-    exports: Exports,
+    extensions: IndexMap<String, String>,
 }
 
 #[async_trait]
@@ -167,7 +167,7 @@ impl EventHandler for Handler {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let config = setting_config::config_parse_toml().await;
 
     let framework = StandardFramework::new()
@@ -176,18 +176,16 @@ async fn main() {
 
     let handler = Handler {
         config: config.clone(),
-        exports: Exports::new(),
+        extensions: todo!(),
     };
 
     let mut client = Client::builder(config.token(), GatewayIntents::all())
         .event_handler(handler)
         .framework(framework)
         .await
-        .expect("Error client");
+        .map_err(|e| anyhow::anyhow!("client can't start: {:?}", e))?;
 
-    if let Err(why) = client.start().await {
-        println!("{:?}", why)
-    }
+    client.start().await.map_err(|e| anyhow::anyhow!(e))
 }
 
 #[help]

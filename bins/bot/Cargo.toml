@@ -8,8 +8,11 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.15", features = ["full"] }
 wasmer="2.2"
+anyhow="1.0"
+indexmap = "1.8"
 setting_config = { path= "../../libs/setting_config" }
 extension_wasm = { path="../../libs/extension_wasm" }
+extension_config = { path="../../libs/extension_config" }
 battle_machine = { path="../../libs/battle_machine" }
 bot_command = { path="../../libs/bot_command" }
 thrpg_database = { path="../../libs/thrpg_database" }

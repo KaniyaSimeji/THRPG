@@ -7,21 +7,32 @@ use url::Url;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExtensionConfig {
     meta: ExtensionMeta,
+    dependencies: Option<Vec<ExtensionDependency>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExtensionMeta {
+    #[serde(alias = "type")]
     extension_type: Extensiontype,
+    #[serde(alias = "name")]
     extension_name: String,
+    #[serde(alias = "author")]
     extension_author: Vec<String>,
+    #[serde(alias = "version")]
     extension_version: String,
+    #[serde(alias = "license")]
     extension_license: Option<String>,
+    #[serde(alias = "docs")]
     extension_docs_url: Option<String>,
+    #[serde(alias = "website")]
     extension_website: Option<String>,
+    #[serde(alias = "repository")]
     extension_repository: Option<String>,
+    #[serde(alias = "story_original")]
     extension_story_origin: Option<String>,
-    extension_author_url: Option<String>,
+    #[serde(alias = "description")]
     extension_description: String,
+    #[serde(alias = "readme")]
     extension_readme: Option<String>,
 }
 
@@ -29,7 +40,15 @@ pub struct ExtensionMeta {
 pub enum Extensiontype {
     Story,
     Contents,
-    NewFeatures,
+    Features,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ExtensionDependency {
+    #[serde(alias = "name")]
+    extension_name: String,
+    require_version: Option<String>,
+    mandatory: bool,
 }
 
 impl Extensiontype {
@@ -37,7 +56,7 @@ impl Extensiontype {
         match value {
             "Story" | "story" => Ok(Self::Story),
             "Contents" | "contents" => Ok(Self::Contents),
-            "NewFeatures" | "newfeatures" => Ok(Self::NewFeatures),
+            "Features" | "features" => Ok(Self::Features),
             _ => Err(anyhow::anyhow!(format!("Not match value {}", value))),
         }
     }
@@ -67,7 +86,7 @@ impl ExtensionConfig {
         match &self.meta.extension_type {
             Extensiontype::Story => todo!(),
             Extensiontype::Contents => todo!(),
-            Extensiontype::NewFeatures => todo!(),
+            Extensiontype::Features => todo!(),
         }
     }
 
