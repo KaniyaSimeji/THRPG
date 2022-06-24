@@ -9,7 +9,7 @@ edition = "2021"
 
 axum="0.4"
 serde = { version = "1.0", features = ["derive"] }
-extension_config = { path="../extension_config" }
+extension = { path="../extension" }
 setting_config = { path="../setting_config" }
 
 [dependencies.serenity]

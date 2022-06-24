@@ -13,6 +13,8 @@ pub struct Config {
     manager_id: u64,
     language: Option<Languages>,
     timeout_duration: Option<u64>,
+    authority_flags: Option<u32>,
+    authority_strict: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -104,5 +106,17 @@ impl Config {
 
     pub fn timeout_duration(&self) -> Option<u64> {
         self.timeout_duration
+    }
+
+    pub fn authority_flags(&self) -> Option<u32> {
+        self.authority_flags
+    }
+
+    pub fn authority_strict(&self) -> bool {
+        if let Some(ans) = self.authority_strict {
+            ans
+        } else {
+            false
+        }
     }
 }

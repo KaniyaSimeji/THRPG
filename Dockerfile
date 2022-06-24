@@ -3,7 +3,8 @@ FROM rust:latest AS builder
 # builder
 WORKDIR /thrpg
 COPY Cargo.toml Cargo.toml
-COPY src/ src/
+COPY libs/ libs/
+COPY bins/ bins/
 RUN cargo build --release
 
 # bin

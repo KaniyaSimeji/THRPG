@@ -1,7 +1,7 @@
 mod model;
 
 use axum::response;
-use extension_config::{ExtensionConfig, Extensiontype};
+use extension::extension_config::{ExtensionConfig, Extensiontype};
 use setting_config::{config_parse_toml, BOTInfo};
 
 /// GET : {url}/info

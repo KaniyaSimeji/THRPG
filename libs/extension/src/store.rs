@@ -1,5 +1,5 @@
+use crate::extension_config::ExtensionConfig;
 use anyhow::Context;
-use extension_config::ExtensionConfig;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
@@ -38,9 +38,13 @@ impl ExtensionStore {
         &self.extension_store_dir_path
     }
 
-    /// Get extensions
-    pub fn extensions(&self) -> &Vec<PathBuf> {
+    /// Get extensions path
+    pub fn extensions_path(&self) -> &Vec<PathBuf> {
         &self.extensions
+    }
+
+    pub fn count_extensions(&self) -> u32 {
+        *&self.extensions.len() as u32
     }
 
     /// import extensions

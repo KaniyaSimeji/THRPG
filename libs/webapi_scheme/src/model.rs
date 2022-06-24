@@ -1,4 +1,4 @@
-use extension_config::ExtensionConfig;
+use extension::extension_config::ExtensionConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

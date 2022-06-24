@@ -1,16 +1,15 @@
-pub mod extension;
-
+use osf_parse::Osf;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use url::Url;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ExtensionConfig {
     meta: ExtensionMeta,
     dependencies: Option<Vec<ExtensionDependency>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ExtensionMeta {
     #[serde(alias = "type")]
     extension_type: Extensiontype,
@@ -34,16 +33,18 @@ pub struct ExtensionMeta {
     extension_description: String,
     #[serde(alias = "readme")]
     extension_readme: Option<String>,
+    #[serde(alias = "entry")]
+    extension_entry: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash, Eq)]
 pub enum Extensiontype {
     Story,
     Contents,
     Features,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ExtensionDependency {
     #[serde(alias = "name")]
     extension_name: String,
@@ -82,14 +83,6 @@ impl ExtensionConfig {
         Ok(parse_result)
     }
 
-    pub fn init(&self) {
-        match &self.meta.extension_type {
-            Extensiontype::Story => todo!(),
-            Extensiontype::Contents => todo!(),
-            Extensiontype::Features => todo!(),
-        }
-    }
-
     /// get extension author
     pub fn author(&self) -> &Vec<String> {
         &self.meta.extension_author
@@ -117,5 +110,16 @@ impl ExtensionConfig {
         } else {
             None
         }
+    }
+
+    pub fn entry_file(&self) -> PathBuf {
+        let path = match self.extension_type().clone() {
+            Extensiontype::Features => {
+                PathBuf::from(format!("{}/{}.wasm", self.name(), self.name()))
+            }
+            Extensiontype::Contents => PathBuf::from(format!("{}/contents.toml", self.name())),
+            Extensiontype::Story => PathBuf::from(format!("{}/main.osf", self.name())),
+        };
+        path
     }
 }

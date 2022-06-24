@@ -3,10 +3,15 @@ use bot_command::{
     info::info,
     play::{delete, play},
 };
-use indexmap::IndexMap;
+use extension::{
+    extension_manage::{ExtensionAuthority, ExtensionManager},
+    store::ExtensionStore,
+};
+use once_cell::sync::Lazy;
 use setting_config::Config;
 use std::collections::HashSet;
 use thrpg_database::postgres_connect::connect;
+use wasmer::Exports;
 
 use serenity::{
     async_trait,
@@ -23,19 +28,18 @@ use serenity::{
     Client,
 };
 
+static EXPORT_FUNCTIONS: Lazy<Exports> = Lazy::new(|| Exports::new());
+
 struct Handler {
     config: Config,
-    extensions: IndexMap<String, String>,
+    extensions: ExtensionManager,
 }
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, _: Ready) {
         ctx.set_activity(serenity::model::gateway::Activity::playing(
-            setting_config::config_parse_toml()
-                .await
-                .prefix()
-                .unwrap_or(&"th!".to_string()),
+            self.config.prefix().unwrap_or(&"th!".to_string()),
         ))
         .await;
 
@@ -91,7 +95,7 @@ impl EventHandler for Handler {
                             option
                                 .name("main")
                                 .description("simple your status")
-                                .kind(ApplicationCommandOptionType::SubCommand)
+                                .kind(ApplicationCommandOptionType::String)
                         })
                         .create_option(|option| {
                             option
@@ -168,7 +172,13 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let extension_store = ExtensionStore::extension_files().await?;
     let config = setting_config::config_parse_toml().await;
+    let extension_manage = ExtensionManager::to_manager(
+        extension_store,
+        &*EXPORT_FUNCTIONS,
+        ExtensionAuthority::authority(config.authority_strict(), config.authority_flags()),
+    );
 
     let framework = StandardFramework::new()
         .configure(|c| c.prefix(config.clone().prefix().unwrap_or(&"th!".to_string())))
@@ -176,7 +186,7 @@ async fn main() -> anyhow::Result<()> {
 
     let handler = Handler {
         config: config.clone(),
-        extensions: todo!(),
+        extensions: extension_manage,
     };
 
     let mut client = Client::builder(config.token(), GatewayIntents::all())
