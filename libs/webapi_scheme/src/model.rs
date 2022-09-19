@@ -30,3 +30,26 @@ pub struct UserRankings {}
 
 #[derive(Deserialize, Serialize)]
 pub struct UserRanking {}
+
+#[derive(Deserialize, Serialize)]
+pub struct BOTInfo {
+    pub name: String,
+    pub author: String,
+    pub version: String,
+    pub website: String,
+    pub repository: String,
+    pub license: String,
+}
+
+impl BOTInfo {
+    pub fn info() -> Self {
+        Self {
+            name: env!("CARGO_PKG_NAME").to_string(),
+            author: env!("CARGO_PKG_AUTHORS").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            website: env!("CARGO_PKG_HOMEPAGE").to_string(),
+            repository: env!("CARGO_PKG_REPOSITORY").to_string(),
+            license: env!("CARGO_PKG_LICENSE").to_string(),
+        }
+    }
+}

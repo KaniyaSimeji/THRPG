@@ -7,8 +7,9 @@ members = [
 	"libs/osf_parse",
 	"libs/setting_i18n",
 	"libs/setting_config",
-	"libs/bot_command",
+	"libs/command_builder",
 	"libs/webapi_scheme",
+	"libs/thrpg_utils",
 	"bins/bot",
 	"bins/webapi"
 ]

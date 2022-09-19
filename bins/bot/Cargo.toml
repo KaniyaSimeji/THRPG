@@ -13,9 +13,10 @@ indexmap = "1.8"
 once_cell = "1.9"
 setting_config = { path= "../../libs/setting_config" }
 battle_machine = { path="../../libs/battle_machine" }
-bot_command = { path="../../libs/bot_command" }
+command_builder = { path="../../libs/command_builder" }
 thrpg_database = { path="../../libs/thrpg_database" }
 extension = { path="../../libs/extension" }
+setting_i18n = { path="../../libs/setting_i18n/" }
 
 [dependencies.serenity]
 default-features = false
@@ -33,3 +34,14 @@ features = [
     "cache"
 ]
 version = "0.11"
+
+[dependencies.sea-orm]
+version = "0.9"
+features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros"
+]
+default-features = false
+
+

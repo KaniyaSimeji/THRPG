@@ -1,7 +1,9 @@
+use std::path::{PathBuf, Path};
+
 use crate::{
     chara::CharaConfig,
-    rpg_core::{BattleData, PlayMode},
-    utils::dir_files,
+    rpg_core::BattleData,
+    mode::PlayMode
 };
 use chrono::prelude::{Local, NaiveDateTime};
 use rand::prelude::IteratorRandom;
@@ -16,27 +18,21 @@ pub struct BattleBuilder {
     mode: PlayMode,
     player: Option<CharaConfig>,
     enemy: Option<CharaConfig>,
-    elapesd_turns: u32,
+    elapsed_turns: u32,
 }
 
+#[derive(Debug)]
 /// Settings for randomly selecting a character
 pub struct RandomOption {
-    /// Whether the values of `player` and` enemy` may be the same
-    pub allow_same_chara: bool,
-    pub toml_dir_path: std::path::PathBuf,
-    pub exclude_charas: Option<Vec<String>>,
+    toml_dir_path: PathBuf,
+    exclude_charas: Option<Vec<String>>,
 }
 
 impl Default for RandomOption {
-    /// Default value
-    /// `toml_dir_path`:`chara/`
-    /// `exclude_charas`: `None`
-    /// `allow_same_chara`: `true`
     fn default() -> Self {
         Self {
-            toml_dir_path: std::path::Path::new("chara").to_path_buf(),
+            toml_dir_path: PathBuf::new().join("chara/"),
             exclude_charas: None,
-            allow_same_chara: true,
         }
     }
 }
@@ -46,7 +42,7 @@ impl Default for BattleBuilder {
         Self {
             datatime: Local::now().naive_local(),
             mode: PlayMode::Simple,
-            elapesd_turns: 0,
+            elapsed_turns: 0,
             enemy: None,
             player: None,
             uuid: Uuid::new_v4(),
@@ -59,7 +55,7 @@ impl BattleBuilder {
         mode: PlayMode,
         player: Option<CharaConfig>,
         enemy: Option<CharaConfig>,
-        elapesd_turns: Option<u32>,
+        elapsed_turns: Option<u32>,
     ) -> Self {
         Self {
             uuid: Uuid::new_v4(),
@@ -67,7 +63,7 @@ impl BattleBuilder {
             mode,
             player,
             enemy,
-            elapesd_turns: elapesd_turns.unwrap_or_default(),
+            elapsed_turns: elapsed_turns.unwrap_or_default(),
         }
     }
 
@@ -121,32 +117,8 @@ impl BattleBuilder {
     }
 
     /// Randomly choose the enemy
-    pub async fn enemy_random(&mut self, random_options: RandomOption) -> &mut Self {
-        let charas = dir_files(random_options.toml_dir_path).await.unwrap();
-        let mut rng = rand::thread_rng();
-        let mut chara = None;
-        if random_options.allow_same_chara == false {
-            while self.player != chara {
-                chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
-            }
-        } else if let Some(f) = random_options.exclude_charas {
-            if f.iter()
-                .any(|f| f == &chara.as_ref().unwrap().charabase.name)
-                == true
-            {
-                loop {
-                    chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
-                    if f.iter()
-                        .any(|f| f == &chara.as_ref().unwrap().charabase.name)
-                        != true
-                    {
-                        break;
-                    }
-                }
-            }
-        } else {
-            chara = Some(charas.iter().choose(&mut rng).unwrap().clone());
-        }
+    pub async fn enemy_random(&mut self, random_options: RandomOption, charas: Vec<CharaConfig>) -> &mut Self {
+        let chara = random_options.chara_random(charas).ok();
         self.enemy = chara;
         self
     }
@@ -189,28 +161,70 @@ impl BattleBuilder {
             self.enemy.unwrap(),
             self.mode,
             self.datatime,
-            self.elapesd_turns,
+            self.elapsed_turns,
         )
     }
 }
 
-impl From<Model> for BattleBuilder {
-    fn from(model: Model) -> Self {
-        BattleBuilder::new(
-            PlayMode::try_from_value(&model.play_mode).unwrap(),
+impl RandomOption {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Default value :`chara/`
+    pub fn path<P:AsRef<Path>>(&mut self, toml_dit_path: P) -> &mut Self {
+        self.toml_dir_path = toml_dit_path.as_ref().to_path_buf();
+        self
+    }
+
+    pub fn exclude_charas<T>(&mut self, charas: T) -> &mut Self
+    where T: FnOnce(&mut Vec<String>) -> &mut Vec<String>
+    {
+        let mut vec = Vec::new();
+        charas(&mut vec);
+        self.exclude_charas = Some(vec);
+        self
+    }
+
+    pub fn chara_random(self, charas: Vec<CharaConfig>) -> anyhow::Result<CharaConfig> {
+        let mut rng = rand::thread_rng();
+        let mut chara: CharaConfig;
+        if let Some(f) = self.exclude_charas {
+                loop {
+                    chara = charas.iter().choose(&mut rng).unwrap().clone();
+                    if f.iter()
+                        .any(|f| f == &chara.meta.name)
+                        != true
+                    {
+                        break;
+                    }
+            }
+        } else {
+            chara = charas.iter().choose(&mut rng).unwrap().clone();
+        }
+
+        Ok(chara)
+
+    }
+}
+
+impl TryFrom<Model> for BattleBuilder {
+    type Error = anyhow::Error;
+    fn try_from(model: Model) -> Result<Self, Self::Error> {
+        let builder = BattleBuilder::new(
+            PlayMode::try_from_value(&model.play_mode)?,
             // base type is CharaConfig
             Some(
-                CharaConfig::chara_new_noasync(
+                CharaConfig::from_file_name_noasync(
                     &model.player["charabase"]["name"].as_str().unwrap(),
-                )
-                .unwrap(),
+                )?,
             ),
             // base type is CharaConfig
             Some(
-                CharaConfig::chara_new_noasync(&model.enemy["charabase"]["name"].as_str().unwrap())
-                    .unwrap(),
+                CharaConfig::from_file_name_noasync(&model.enemy["charabase"]["name"].as_str().unwrap())?,
             ),
             Some(model.elapesd_turns),
-        )
+        );
+        Ok(builder)
     }
 }

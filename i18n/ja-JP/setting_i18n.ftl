@@ -1,0 +1,1 @@
+appear-enemy = {$name}があらわれた！

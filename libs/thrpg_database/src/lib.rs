@@ -10,7 +10,7 @@ pub mod redis_connect {
     /// url format :
     /// "redis://<username>:<password>@<hostname>:<port>/<db>"
     pub async fn connect(url: impl Into<String>) -> redis::RedisResult<AsyncConnection> {
-        let client = redis::Client::open(url.into()).expect("不正なURLです");
+        let client = redis::Client::open(url.into()).expect("invalid URL");
         let connect = client.get_tokio_connection().await?;
         Ok(connect)
     }

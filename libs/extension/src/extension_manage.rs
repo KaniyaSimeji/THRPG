@@ -1,14 +1,14 @@
 use crate::extension_config::{ExtensionConfig, Extensiontype};
 use bitflags::bitflags;
 use indexmap::IndexMap;
-use std::io::Read;
-use wasmer::{ChainableNamedResolver, Exports, Function, ImportObject, Instance, Module, Store};
-use wasmer_wasi::{Pipe, WasiEnv, WasiState};
+use wasmer::Imports;
 
+
+#[derive(Debug,Clone)]
 pub struct ExtensionManager {
     extensions: IndexMap<String, ExtensionConfig>,
     authority: ExtensionAuthority,
-    import_object: ImportObject,
+    import_object: Imports,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,16 +41,13 @@ impl ExtensionAuthority {
         }
     }
 
-    pub fn authority(strict: bool, flags: Option<u32>) -> Self {
-        if strict {
-            ExtensionAuthority::Strict
-        } else {
-            if let Some(flags) = flags {
-                ExtensionAuthority::Custom(AuthorityFlags::from_bits(flags).unwrap())
-            } else {
-                ExtensionAuthority::Standard
-            }
-        }
+    pub fn strict() -> Self {
+        ExtensionAuthority::Strict
+    }
+
+    pub fn custom(flags: u32) -> Option<Self> {
+        let bits = AuthorityFlags::from_bits(flags)?;
+        Some(ExtensionAuthority::Custom(bits))
     }
 }
 
@@ -60,68 +57,3 @@ impl Default for ExtensionAuthority {
     }
 }
 
-impl ExtensionManager {
-    pub fn to_manager(store: crate::store::ExtensionStore, authority: ExtensionAuthority) -> Self {
-        let mut map: IndexMap<String, ExtensionConfig> = IndexMap::new();
-        store.import().into_iter().for_each(|extension| {
-            map.insert(extension.name().to_string(), extension);
-        });
-        Self {
-            extensions: map,
-            authority,
-            import_object: ImportObject::new(),
-        }
-    }
-
-    pub fn add_exports(&mut self, objects: Vec<Exports>) -> &mut Self {
-        objects.iter().for_each(|export| {
-            self.import_object.register("env", export.clone());
-        });
-        self
-    }
-
-    pub fn wasi_state_setting() -> WasiEnv {
-        let input = Pipe::new();
-        let output = Pipe::new();
-        let wasi_env = WasiState::new("thrpg")
-            .map_dir("/host", ".")
-            .unwrap()
-            .stdin(Box::new(input))
-            .stdout(Box::new(output))
-            .finalize()
-            .unwrap();
-        wasi_env
-    }
-
-    pub fn boot_extension(mut self, wasi_object: ImportObject) {
-        self.extensions
-            .into_iter()
-            .map(|(_, extension_config)| {
-                let entry_path = extension_config.entry_file();
-                let mut buf = Vec::new();
-                let content = std::fs::File::open(entry_path)
-                    .unwrap()
-                    .read_to_end(&mut buf)
-                    .unwrap();
-                let bytes = buf.as_slice();
-                if extension_config.extension_type() == &Extensiontype::Features {
-                    let module = Module::new(&Store::default(), bytes).unwrap();
-                    let instance =
-                        Instance::new(&module, &self.import_object.chain_back(wasi_object))
-                            .unwrap();
-                    instance
-                } else if extension_config.extension_type() == &Extensiontype::Contents {
-                    let strg = String::from_utf8(bytes.to_vec());
-                    todo!()
-                } else {
-                    todo!()
-                }
-            })
-            .collect();
-    }
-}
-
-struct ExtensionEnv {
-    config: ExtensionConfig,
-    instance: Instance,
-}

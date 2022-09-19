@@ -1,8 +1,10 @@
-use battle_machine::rpg_core::PlayMode;
-use bot_command::{
-    info::info,
-    play::{delete, play},
-};
+mod info;
+mod play;
+mod chara_utill;
+
+use play::{delete,play};
+use info::info;
+use battle_machine::mode::PlayMode;
 use extension::{
     extension_manage::{ExtensionAuthority, ExtensionManager},
     store::ExtensionStore,
@@ -30,16 +32,37 @@ use serenity::{
 
 static EXPORT_FUNCTIONS: Lazy<Exports> = Lazy::new(|| Exports::new());
 
+//#[derive(Deserialize, Serialize)]
+pub struct BOTInfo {
+    pub name: String,
+    pub author: String,
+    pub version: String,
+    pub website: String,
+    pub repository: String,
+    pub license: String,
+}
+
+impl BOTInfo {
+    pub fn info() -> Self {
+        Self {
+            name: env!("CARGO_PKG_NAME").to_string(),
+            author: env!("CARGO_PKG_AUTHORS").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            website: env!("CARGO_PKG_HOMEPAGE").to_string(),
+            repository: env!("CARGO_PKG_REPOSITORY").to_string(),
+            license: env!("CARGO_PKG_LICENSE").to_string(),
+        }
+    }
+}
 struct Handler {
     config: Config,
-    extensions: ExtensionManager,
 }
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, _: Ready) {
         ctx.set_activity(serenity::model::gateway::Activity::playing(
-            self.config.prefix().unwrap_or(&"th!".to_string()),
+            &self.config.prefix().unwrap_or(&"th!".to_string()),
         ))
         .await;
 
@@ -145,7 +168,7 @@ impl EventHandler for Handler {
                     ctx,
                     command.channel_id,
                     command.user,
-                    connect(self.config.postgresql_config().db_address)
+                    connect(self.config.postgresql_config().db_address.as_str())
                         .await
                         .unwrap(),
                 )
@@ -158,7 +181,7 @@ impl EventHandler for Handler {
                     &ctx,
                     command.channel_id,
                     command.user,
-                    connect(self.config.postgresql_config().db_address)
+                    connect(self.config.postgresql_config().db_address.as_str())
                         .await
                         .unwrap(),
                 )
@@ -174,20 +197,11 @@ impl EventHandler for Handler {
 async fn main() -> anyhow::Result<()> {
     let extension_store = ExtensionStore::extension_files().await?;
     let config = setting_config::config_parse_toml().await;
-    let extension_manage = ExtensionManager::to_manager(
-        extension_store,
-        &*EXPORT_FUNCTIONS,
-        ExtensionAuthority::authority(config.authority_strict(), config.authority_flags()),
-    );
 
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix(config.clone().prefix().unwrap_or(&"th!".to_string())))
-        .help(&HELP);
+        .configure(|c| c.prefix(config.clone().prefix().unwrap_or(&"th!".to_string())));
 
-    let handler = Handler {
-        config: config.clone(),
-        extensions: extension_manage,
-    };
+    let handler = Handler { config };
 
     let mut client = Client::builder(config.token(), GatewayIntents::all())
         .event_handler(handler)
@@ -198,15 +212,3 @@ async fn main() -> anyhow::Result<()> {
     client.start().await.map_err(|e| anyhow::anyhow!(e))
 }
 
-#[help]
-async fn help(
-    context: &Context,
-    msg: &Message,
-    args: Args,
-    help_options: &'static HelpOptions,
-    groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>,
-) -> CommandResult {
-    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
-    Ok(())
-}

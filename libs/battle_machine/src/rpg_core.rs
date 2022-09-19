@@ -1,5 +1,5 @@
 use crate::chara::{CharaConfig, LevelupExpType, LuckyLevel, SkillType};
-use crate::utils::{dir_files, dir_files_noasync};
+use crate::mode::PlayMode;
 use anyhow::Context;
 use chrono::prelude::NaiveDateTime;
 use once_cell::sync::Lazy;
@@ -8,176 +8,28 @@ use serde::{Deserialize, Serialize};
 use thrpg_database::userdata::Model;
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
-pub enum PlayMode {
-    Simple,
-    Raid,
-    Story { id: String },
-}
-
-impl ToString for PlayMode {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
-    }
-}
-
-impl PlayMode {
-    pub fn try_from_value(value: &str) -> anyhow::Result<Self> {
-        match value {
-            "Simple" => Ok(Self::Simple),
-            "Raid" => Ok(Self::Raid),
-            _ => Err(anyhow::anyhow!(format!("No match {}", value))),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Story { id: e } => e.as_str(),
-            Self::Simple => "Simple",
-            Self::Raid => "Raid",
-        }
-    }
-    /// get story id
-    pub fn story_id(&self) -> Option<&str> {
-        match self {
-            Self::Simple => None,
-            Self::Raid => None,
-            Self::Story { id: a } => Some(a),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct BattleData {
     uuid: Uuid,
     player_data: CharaConfig,
     enemy_data: CharaConfig,
     play_mode: PlayMode,
-    elapesd_turns: u32,
+    elapsed_turns: u32,
     start_time: NaiveDateTime,
     is_running: bool,
 }
 
-impl CharaConfig {
-    pub async fn chara_new(name_arg: &str) -> anyhow::Result<Self> {
-        static REIMU_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(h|H)+akurei)?(r|R)eimu$").unwrap());
-        static SAKUYA_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(i|I)+zayoi)?(s|S)akuya$").unwrap());
-        static MARISA_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(k|K)+irisame)?(m|M)arisa$").unwrap());
+impl TryFrom<Model> for CharaConfig {
+    type Error = anyhow::Error;
 
-        if let Some(_) = REIMU_REGEX.find(&name_arg) {
-            let chara_datas = dir_files("chara").await.unwrap();
-            let reimu_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "博麗霊夢")
-                .context("Not found")?;
-            Ok(reimu_data)
-        } else if let Some(_) = SAKUYA_REGEX.find(&name_arg) {
-            let chara_datas = dir_files("chara").await.unwrap();
-            let sakuya_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "十六夜咲夜")
-                .context("Not found")?;
-            Ok(sakuya_data)
-        } else if let Some(_) = MARISA_REGEX.find(&name_arg) {
-            let chara_datas = dir_files("chara").await.unwrap();
-            let marisa_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "霧雨魔理沙")
-                .context("Not found")?;
-            Ok(marisa_data)
-        } else if &name_arg == &"博麗霊夢" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let reimu_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "博麗霊夢")
-                .context("Not found")?;
-            Ok(reimu_data)
-        } else if &name_arg == &"十六夜咲夜" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let sakuya_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "十六夜咲夜")
-                .context("Not found")?;
-            Ok(sakuya_data)
-        } else if &name_arg == &"霧雨魔理沙" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let marisa_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "霧雨魔理沙")
-                .context("Not found")?;
-            Ok(marisa_data)
-        } else {
-            Err(anyhow::anyhow!("No match regex {:?}", &name_arg))
-        }
-    }
-
-    pub fn chara_new_noasync(name_arg: &str) -> anyhow::Result<Self> {
-        static REIMU_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(h|H)+akurei)?(r|R)eimu$").unwrap());
-        static SAKUYA_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(i|I)+zayoi)?(s|S)akuya$").unwrap());
-        static MARISA_REGEX: Lazy<regex::Regex> =
-            Lazy::new(|| regex::Regex::new(r"(?i)(^(k|K)+irisame)?(m|M)arisa$").unwrap());
-
-        if let Some(_) = REIMU_REGEX.find(&name_arg) {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let reimu_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "博麗霊夢")
-                .context("Not found")?;
-            Ok(reimu_data)
-        } else if let Some(_) = SAKUYA_REGEX.find(&name_arg) {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let sakuya_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "十六夜咲夜")
-                .context("Not found")?;
-            Ok(sakuya_data)
-        } else if let Some(_) = MARISA_REGEX.find(&name_arg) {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let marisa_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "霧雨魔理沙")
-                .context("Not found")?;
-            Ok(marisa_data)
-        } else if &name_arg == &"博麗霊夢" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let reimu_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "博麗霊夢")
-                .context("Not found")?;
-            Ok(reimu_data)
-        } else if &name_arg == &"十六夜咲夜" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let sakuya_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "十六夜咲夜")
-                .context("Not found")?;
-            Ok(sakuya_data)
-        } else if &name_arg == &"霧雨魔理沙" {
-            let chara_datas = dir_files_noasync("chara").unwrap();
-            let marisa_data = chara_datas
-                .into_iter()
-                .find(|f| f.charabase.name == "霧雨魔理沙")
-                .context("Not found")?;
-            Ok(marisa_data)
-        } else {
-            Err(anyhow::anyhow!("No match regex {:?}", &name_arg))
-        }
-    }
-}
-
-impl From<Model> for CharaConfig {
-    fn from(model: Model) -> Self {
-        CharaConfig::chara_new_noasync(&model.player).unwrap()
+    fn try_from(model: Model) -> Result<Self,Self::Error> {
+        let data = CharaConfig::from_file_name_noasync(&model.player)?;
+        Ok(data)
     }
 }
 
 impl LuckyLevel {
-    pub fn lucky_number(&self) -> f32 {
+    pub const fn lucky_number(&self) -> f32 {
         match self {
             LuckyLevel::LuckyOne => 1.1,
             LuckyLevel::LuckyTwo => 1.3,
@@ -199,9 +51,9 @@ impl BattleData {
         uuid: Uuid,
         player_data: CharaConfig,
         enemy_data: CharaConfig,
-        play_mode: PlayMode,
+        play_mode: crate::mode::PlayMode,
         start_time: NaiveDateTime,
-        elapesd_turns: u32,
+        elapsed_turns: u32,
     ) -> Self {
         Self {
             uuid,
@@ -209,19 +61,19 @@ impl BattleData {
             enemy_data,
             play_mode,
             start_time,
-            elapesd_turns,
+            elapsed_turns,
             is_running: false,
         }
     }
 
     /// Advance the elapsed turn
     pub fn add_turn(&mut self) -> &mut Self {
-        self.elapesd_turns += 1;
+        self.elapsed_turns += 1;
         self
     }
 
     pub fn reset_turn(&mut self) -> &mut Self {
-        self.elapesd_turns = 0;
+        self.elapsed_turns = 0;
         self
     }
 
@@ -245,7 +97,7 @@ impl BattleData {
         let info = turn_info
             .into_iter()
             .cycle()
-            .nth(self.elapesd_turns as usize)
+            .nth(self.elapsed_turns as usize)
             .unwrap();
 
         info
@@ -310,8 +162,8 @@ impl BattleData {
         self
     }
 
-    pub fn elapesd_turns(&self) -> u32 {
-        self.elapesd_turns
+    pub fn elapsed_turns(&self) -> u32 {
+        self.elapsed_turns
     }
 
     pub fn is_running(&self) -> bool {

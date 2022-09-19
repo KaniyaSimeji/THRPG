@@ -21,9 +21,9 @@ impl ExtensionStore {
         let mut entries: Vec<PathBuf> = Vec::new();
 
         while let Some(entry) = dir_stream.next_entry().await? {
-            let dir_entrey = entry.path();
+            let dir_entry = entry.path();
 
-            entries.push(dir_entrey);
+            entries.push(dir_entry);
         }
 
         Ok(Self {
@@ -43,8 +43,9 @@ impl ExtensionStore {
         &self.extensions
     }
 
+    /// Get counted extensions
     pub fn count_extensions(&self) -> u32 {
-        *&self.extensions.len() as u32
+        self.extensions.len() as u32
     }
 
     /// import extensions

@@ -2,7 +2,7 @@ use anyhow::Context;
 use battle_machine::{
     builder::{BattleBuilder, RandomOption},
     chara::CharaConfig,
-    rpg_core::PlayMode,
+    mode::PlayMode,
 };
 use once_cell::sync::Lazy;
 use sea_orm::{ActiveModelTrait, ActiveValue, EntityTrait, ModelTrait};
@@ -12,8 +12,7 @@ use serenity::model::channel::Message;
 use serenity::model::channel::ReactionType;
 use serenity::model::prelude::ChannelId;
 use serenity::model::user::User;
-use setting_config::{config_parse_toml, Languages};
-use setting_i18n::i18n_text;
+use setting_config::config_parse_toml;
 use std::time::Duration;
 use thrpg_database::{
     playdata::Entity as PlaydataEntity,
@@ -21,6 +20,8 @@ use thrpg_database::{
         ActiveModel as UserDataActiveModel, Entity as UserDataEntity, Model as UserDataModel,
     },
 };
+use setting_i18n::{localizer, appear_enemy};
+
 
 pub static BATTLE_REACTIONS: Lazy<Vec<ReactionType>> = Lazy::new(|| {
     let mut vec = Vec::new();
@@ -80,32 +81,29 @@ pub async fn play(
 
         let mut battle = match playdata {
             Some(d) => {
-                let mut builder: BattleBuilder = d.into();
+                let mut builder: BattleBuilder = d.try_into()?;
                 builder.player_status_setting(userdata.level as i16);
                 builder.enemy_status_setting(userdata.level as i16);
                 builder.build()
             }
             None => {
                 let mut init =
-                    BattleBuilder::new(PlayMode::Simple, Some(userdata.clone().into()), None, None);
+                    BattleBuilder::new(PlayMode::Simple, Some(userdata.clone().try_into()?), None, None);
 
-                init.enemy_random(RandomOption::default()).await;
+                init.enemy_random(RandomOption::default(), todo!()).await;
                 init.player_status_setting(1).enemy_status_setting(1);
 
                 init.build()
             }
         };
-
         channel_id
             .send_message(&ctx.http, |m| {
                 m.embed(|e| {
-                    e.title(format!(
-                        "{}{}",
-                        &battle.enemy().charabase.name,
-                        i18n_text(Languages::Japanese).game_message.appear_enemy
-                    ))
-                    .description(if &battle.elapesd_turns() != &0 {
-                        format!("{}ターン目です", &battle.elapesd_turns())
+                    e.title(
+                        appear_enemy(&battle.enemy().meta.name)
+                    )
+                    .description(if &battle.elapsed_turns() != &0 {
+                        format!("{}ターン目です", &battle.elapsed_turns())
                     } else {
                         format!("最初からです")
                     })
@@ -135,7 +133,7 @@ pub async fn play(
                                         f.embed(|e| {
                                             let enemy = result.enemy();
                                             e.title(format!("敵ののこりhp{}", enemy.charabase.hp))
-                                                .description(&enemy.charabase.name)
+                                                .description(&enemy.meta.name)
                                         })
                                     })
                                     .await
@@ -146,7 +144,7 @@ pub async fn play(
                                         f.embed(|e| {
                                             e.title(format!(
                                                 "{}を倒した",
-                                                result.enemy().charabase.name
+                                                result.enemy().meta.name
                                             ))
                                         })
                                     })
@@ -161,7 +159,7 @@ pub async fn play(
                                     exp: ActiveValue::Set(user_exp as i64),
                                     level: ActiveValue::Set(player_level as i64),
                                     player: ActiveValue::Set(userdata.player.clone()),
-                                    battle_uuid: ActiveValue::Set(Some(battle.uuid())),
+                                    battle_uuid: ActiveValue::Set(Some(sea_orm::prelude::Uuid::parse_str(&battle.uuid().to_string()).unwrap())),
                                 };
                                 usermodel.save(&postgres_connect).await?;
                                 break;
@@ -176,7 +174,7 @@ pub async fn play(
                                     f.embed(|e| {
                                         e.title(format!(
                                             "{}は防御した",
-                                            &result.player().charabase.name
+                                            &result.player().meta.name
                                         ))
                                     })
                                 })
@@ -191,7 +189,7 @@ pub async fn play(
                                 exp: userdata.exp as i64 + battle.enemy().meta.get_exp as i64,
                                 level: player_level as i64,
                                 player: userdata.player.clone(),
-                                battle_uuid: Some(battle.uuid()),
+                                battle_uuid: Some(sea_orm::prelude::Uuid::parse_str(&battle.uuid().to_string()).unwrap()),
                             }
                             .into();
                             active_userdata.insert(&postgres_connect).await?;
@@ -243,7 +241,7 @@ pub async fn play(
                         _ => break,
                     }
                 }
-            } else if battle.elapesd_turns() == 0 && battle.turn() == battle.enemy() {
+            } else if battle.elapsed_turns() == 0 && battle.turn() == battle.enemy() {
                 let operation_embed =
                     operation_enemy(&ctx, channel_id, BATTLE_REACTIONS.to_vec()).await?;
                 battle.add_turn();
@@ -265,7 +263,7 @@ pub async fn play(
                                         f.embed(|e| {
                                             let enemy = result.enemy();
                                             e.title(format!("敵ののこりhp{}", enemy.charabase.hp))
-                                                .description(&enemy.charabase.name)
+                                                .description(&enemy.meta.name)
                                         })
                                     })
                                     .await
@@ -276,7 +274,7 @@ pub async fn play(
                                         f.embed(|e| {
                                             e.title(format!(
                                                 "{}を倒した",
-                                                result.enemy().charabase.name
+                                                result.enemy().meta.name
                                             ))
                                         })
                                     })
@@ -295,7 +293,7 @@ pub async fn play(
                                     f.embed(|e| {
                                         e.title(format!(
                                             "{}は防御した",
-                                            &result.player().charabase.name
+                                            &result.player().meta.name
                                         ))
                                     })
                                 })
@@ -310,7 +308,7 @@ pub async fn play(
                                 exp: userdata.exp as i64 + battle.enemy().meta.get_exp as i64,
                                 level: player_level as i64,
                                 player: userdata.player.clone(),
-                                battle_uuid: Some(battle.uuid()),
+                                battle_uuid: Some(sea_orm::prelude::Uuid::parse_str(&battle.uuid().to_string()).unwrap()),
                             }
                             .into();
                             active_userdata.insert(&postgres_connect).await?;
@@ -369,7 +367,7 @@ pub async fn play(
                             f.embed(|e| {
                                 let player = result.player();
                                 e.title(format!("味方ののこりhp{}", player.charabase.hp))
-                                    .description(&player.charabase.name)
+                                    .description(&player.meta.name)
                             })
                         })
                         .await
@@ -380,7 +378,7 @@ pub async fn play(
                             f.embed(|e| {
                                 e.title(format!(
                                     "{}に倒されてしまった",
-                                    result.enemy().charabase.name
+                                    result.enemy().meta.name
                                 ))
                             })
                         })

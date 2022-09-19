@@ -1,8 +1,24 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Default server address 
+/// check: [address_random](address_random())
 pub const NULL_ADDRESS: &str = "null.address";
+
 /// THRPG.toml params
+/// example:
+/// ```toml
+/// token="your bot token"
+/// prefix="th!" # your bot prefix
+/// manager_id= #your userid
+/// language="Japanese" # used language in your bot 
+///
+/// [postgresql_config]
+/// db_address="postgres://postgres@localhost/thrpg" # postgresql server address
+///
+/// [redis_config]
+/// db_address="" # redis server address
+/// ```
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     token: String,
@@ -11,7 +27,7 @@ pub struct Config {
     redis_config: Option<RedisConfig>,
     postgresql_config: PostgresqlConfig,
     manager_id: u64,
-    language: Option<Languages>,
+    language: Option<String>,
     timeout_duration: Option<u64>,
     authority_flags: Option<u32>,
     authority_strict: Option<bool>,
@@ -25,35 +41,6 @@ pub struct RedisConfig {
 #[derive(Deserialize, Serialize, Clone)]
 pub struct PostgresqlConfig {
     pub db_address: String,
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub enum Languages {
-    Japanese,
-    English,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct BOTInfo {
-    pub name: String,
-    pub author: String,
-    pub version: String,
-    pub website: String,
-    pub repository: String,
-    pub license: String,
-}
-
-impl BOTInfo {
-    pub fn info() -> Self {
-        Self {
-            name: env!("CARGO_PKG_NAME").to_string(),
-            author: env!("CARGO_PKG_AUTHORS").to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            website: env!("CARGO_PKG_HOMEPAGE").to_string(),
-            repository: env!("CARGO_PKG_REPOSITORY").to_string(),
-            license: env!("CARGO_PKG_LICENSE").to_string(),
-        }
-    }
 }
 
 pub async fn config_parse_toml() -> Config {
@@ -71,31 +58,31 @@ pub fn address_random() -> String {
 }
 
 impl Config {
-    pub fn token(self) -> String {
-        self.token
+    pub fn token(&self) -> &str {
+        &self.token
     }
 
-    pub fn server_address(&self) -> Option<&String> {
-        self.server_address.as_ref()
+    pub fn server_address(&self) -> Option<&str> {
+        self.server_address.as_ref().map(|string| string as &str)
     }
     pub fn redis_config(&self) -> Option<&RedisConfig> {
         self.redis_config.as_ref()
     }
 
-    pub fn postgresql_config(&self) -> PostgresqlConfig {
-        self.postgresql_config.clone()
+    pub fn postgresql_config(&self) -> &PostgresqlConfig {
+        &self.postgresql_config
     }
 
     pub fn manager_id(&self) -> u64 {
         self.manager_id
     }
 
-    pub fn prefix(&self) -> Option<&String> {
-        self.prefix.as_ref()
+    pub fn prefix(&self) -> Option<&str> {
+        self.prefix.as_ref().map(|string| string as &str)
     }
 
-    pub fn check_server_address(self) -> anyhow::Result<String> {
-        if let Some(url) = self.server_address {
+    pub fn check_server_address(&self) -> anyhow::Result<String> {
+        if let Some(url) = &self.server_address {
             let url = url::Url::parse(&url).map_err(|e| anyhow::anyhow!(e))?;
             let string: String = url.into();
             Ok(string)
